@@ -7,7 +7,7 @@ export async function getPool() {
     return pool;
   }
 
-  // Solo usamos DB_* (Railway)
+  // Solo usamos DB_* (Railway) - v2
   const host = process.env.DB_HOST;
   const user = process.env.DB_USER;
   const password = process.env.DB_PASSWORD;
