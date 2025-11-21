@@ -1,5 +1,6 @@
 import mysql from 'mysql2/promise';
 
+// Pool reiniciado - v3
 let pool: mysql.Pool | null = null;
 
 export async function getPool() {
