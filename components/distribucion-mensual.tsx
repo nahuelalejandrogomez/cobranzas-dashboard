@@ -44,14 +44,26 @@ export function DistribucionMensual() {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (retries = 3) => {
     try {
       const response = await fetch('/api/kpi/distribucion-mensual');
-      if (!response.ok) throw new Error('Error al obtener datos');
-      
+      if (!response.ok) {
+        if (retries > 0) {
+          // Reintentar después de 1 segundo
+          await new Promise(r => setTimeout(r, 1000));
+          return fetchData(retries - 1);
+        }
+        throw new Error('Error al obtener datos');
+      }
+
       const result = await response.json();
       setData(result);
+      setError(null);
     } catch (err) {
+      if (retries > 0) {
+        await new Promise(r => setTimeout(r, 1000));
+        return fetchData(retries - 1);
+      }
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setLoading(false);

@@ -26,16 +26,25 @@ function DeudoresResumen() {
     fetchStats();
   }, []);
 
-  const fetchStats = async () => {
+  const fetchStats = async (retries = 3) => {
     try {
       const response = await fetch('/api/kpi/deudores');
-      if (!response.ok) throw new Error('Error al obtener estadísticas de deudores');
-      
+      if (!response.ok) {
+        if (retries > 0) {
+          await new Promise(r => setTimeout(r, 1000));
+          return fetchStats(retries - 1);
+        }
+        throw new Error('Error al obtener estadísticas de deudores');
+      }
+
       const data = await response.json();
-      
-      // Usar estadísticas calculadas en el servidor
       setStats(data.stats);
+      setError(null);
     } catch (err) {
+      if (retries > 0) {
+        await new Promise(r => setTimeout(r, 1000));
+        return fetchStats(retries - 1);
+      }
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setLoading(false);
