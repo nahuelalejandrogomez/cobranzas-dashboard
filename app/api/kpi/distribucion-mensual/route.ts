@@ -1,74 +1,64 @@
 import { NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/db';
 
-interface DistribucionMensual {
-  mes: string;
-  año: number;
-  cuponesCobrados: number;
-  montoCobrado: number;
-  cuponesAdeudados: number;
-  montoAdeudado: number;
-  cuponesBonificados: number;
-  montoBonificado: number;
-}
-
 export async function GET() {
   try {
-    
+    console.log('[API distribucion-mensual] Starting query...');
 
-    
-    // Obtener datos de los últimos 5 períodos (usando PERLIQUIDANRO)
-    // CONCEPTO GLOBAL: Total Cobrado = SUM(ABOLIQUIDA) global, Total Deuda = SUM(IMPLIQUIDA - ABOLIQUIDA) global
+    // Query simplificada para evitar problemas
     const query = `
-      SELECT 
-        YEAR(L.PERLIQUIDANRO) as año,
-        MONTH(L.PERLIQUIDANRO) as mes_numero,
-        MONTHNAME(L.PERLIQUIDANRO) as mes,
-        
-        -- Cupones cobrados completamente (CA - Cobrado)
-        COUNT(CASE WHEN L.ESTLIQUIDA = 'CA' THEN 1 END) as cuponesCobrados,
-        -- GLOBAL: Total cobrado de TODAS las liquidaciones del período
-        COALESCE(SUM(L.ABOLIQUIDA), 0) as montoCobrado,
-        
-        -- Cupones con deuda (AD - Adeudado + DE - Debe)
-        COUNT(CASE WHEN L.ESTLIQUIDA IN ('AD', 'DE') THEN 1 END) as cuponesAdeudados,
-        -- GLOBAL: Total deuda de TODAS las liquidaciones del período
-        COALESCE(SUM(L.IMPLIQUIDA - L.ABOLIQUIDA), 0) as montoAdeudado,
-        
-        -- Cupones bonificados (BO - Bonificado)
-        COUNT(CASE WHEN L.ESTLIQUIDA = 'BO' THEN 1 END) as cuponesBonificados,
-        -- Solo bonificados: monto total de liquidaciones BO
-        COALESCE(SUM(CASE WHEN L.ESTLIQUIDA = 'BO' THEN L.IMPLIQUIDA END), 0) as montoBonificado
-        
-      FROM Liquidaciones L
-      WHERE L.PERLIQUIDANRO >= DATE_SUB(CURDATE(), INTERVAL 4 MONTH)
-        AND L.PERLIQUIDANRO <= LAST_DAY(CURDATE())
-      GROUP BY YEAR(L.PERLIQUIDANRO), MONTH(L.PERLIQUIDANRO)
+      SELECT
+        YEAR(PERLIQUIDANRO) as año,
+        MONTH(PERLIQUIDANRO) as mes_numero,
+        MONTHNAME(PERLIQUIDANRO) as mes,
+        COUNT(CASE WHEN ESTLIQUIDA = 'CA' THEN 1 END) as cuponesCobrados,
+        COALESCE(SUM(ABOLIQUIDA), 0) as montoCobrado,
+        COUNT(CASE WHEN ESTLIQUIDA IN ('AD', 'DE') THEN 1 END) as cuponesAdeudados,
+        COALESCE(SUM(IMPLIQUIDA - ABOLIQUIDA), 0) as montoAdeudado,
+        COUNT(CASE WHEN ESTLIQUIDA = 'BO' THEN 1 END) as cuponesBonificados,
+        COALESCE(SUM(CASE WHEN ESTLIQUIDA = 'BO' THEN IMPLIQUIDA ELSE 0 END), 0) as montoBonificado
+      FROM Liquidaciones
+      WHERE PERLIQUIDANRO IS NOT NULL
+        AND PERLIQUIDANRO >= DATE_SUB(CURDATE(), INTERVAL 5 MONTH)
+      GROUP BY YEAR(PERLIQUIDANRO), MONTH(PERLIQUIDANRO), MONTHNAME(PERLIQUIDANRO)
       ORDER BY año DESC, mes_numero DESC
       LIMIT 5
     `;
-    
-    const rows = await executeQuery(query) as any[];
-    
 
-    
+    console.log('[API distribucion-mensual] Executing query...');
+    const rows = await executeQuery(query) as any[];
+    console.log('[API distribucion-mensual] Query returned', rows?.length || 0, 'rows');
+
+    if (!rows || rows.length === 0) {
+      console.log('[API distribucion-mensual] No data found');
+      return NextResponse.json([]);
+    }
+
     const distribucion = rows.map(row => ({
-      mes: row.mes,
-      año: row.año,
-      cuponesCobrados: parseInt(row.cuponesCobrados),
-      montoCobrado: parseFloat(row.montoCobrado),
-      cuponesAdeudados: parseInt(row.cuponesAdeudados),
-      montoAdeudado: parseFloat(row.montoAdeudado),
-      cuponesBonificados: parseInt(row.cuponesBonificados),
-      montoBonificado: parseFloat(row.montoBonificado),
+      mes: row.mes || 'Unknown',
+      año: Number(row.año) || 0,
+      cuponesCobrados: Number(row.cuponesCobrados) || 0,
+      montoCobrado: Number(row.montoCobrado) || 0,
+      cuponesAdeudados: Number(row.cuponesAdeudados) || 0,
+      montoAdeudado: Number(row.montoAdeudado) || 0,
+      cuponesBonificados: Number(row.cuponesBonificados) || 0,
+      montoBonificado: Number(row.montoBonificado) || 0,
     }));
-    
+
+    console.log('[API distribucion-mensual] Returning', distribucion.length, 'records');
     return NextResponse.json(distribucion);
-    
+
   } catch (error) {
-    console.error('Error en distribucion-mensual:', error);
+    console.error('[API distribucion-mensual] ERROR:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : '';
+
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      {
+        error: 'Error interno del servidor',
+        message: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? errorStack : undefined
+      },
       { status: 500 }
     );
   }

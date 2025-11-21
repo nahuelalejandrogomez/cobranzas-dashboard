@@ -7,38 +7,69 @@ export async function getPool() {
     return pool;
   }
 
+  const host = process.env.MYSQLHOST || process.env.DB_HOST;
+  const user = process.env.MYSQLUSER || process.env.DB_USER;
+  const password = process.env.MYSQLPASSWORD || process.env.DB_PASSWORD;
+  const database = process.env.MYSQLDATABASE || process.env.DB_NAME;
+  const port = Number(process.env.MYSQLPORT || process.env.DB_PORT || 3306);
+
+  console.log('[DB] Creating pool - Host:', host, 'Database:', database, 'Port:', port);
+
+  if (!host || !user || !password || !database) {
+    console.error('[DB] Missing connection parameters:', { host, user, database, port });
+    throw new Error('Database configuration incomplete');
+  }
+
   try {
-    // Soporta variables de Railway (MYSQL*) y custom (DB_*)
-    pool = await mysql.createPool({
-      host: process.env.MYSQLHOST || process.env.DB_HOST,
-      user: process.env.MYSQLUSER || process.env.DB_USER,
-      password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD,
-      database: process.env.MYSQLDATABASE || process.env.DB_NAME,
-      port: Number(process.env.MYSQLPORT || process.env.DB_PORT || 3306),
+    pool = mysql.createPool({
+      host,
+      user,
+      password,
+      database,
+      port,
       waitForConnections: true,
-      connectionLimit: 10,
+      connectionLimit: 5,
       queueLimit: 0,
+      connectTimeout: 30000,
+      // Importante para Railway/serverless
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 10000,
     });
+
+    // Test connection
+    const connection = await pool.getConnection();
+    console.log('[DB] Pool created and connection tested successfully');
+    connection.release();
 
     return pool;
   } catch (error) {
-    console.error('Database connection failed:', error);
-    throw new Error('Failed to connect to database');
+    console.error('[DB] Failed to create pool:', error);
+    pool = null;
+    throw error;
   }
 }
 
 export async function executeQuery(query: string, values?: any[]) {
+  let connection;
   try {
-    const pool = await getPool();
-    const connection = await pool.getConnection();
-    try {
-      const [results] = await connection.execute(query, values);
-      return results;
-    } finally {
+    const dbPool = await getPool();
+    connection = await dbPool.getConnection();
+    const [results] = await connection.execute(query, values);
+    return results;
+  } catch (error) {
+    console.error('[DB] Query error:', error);
+    // Reset pool on connection errors
+    if (error instanceof Error &&
+        (error.message.includes('ECONNREFUSED') ||
+         error.message.includes('ETIMEDOUT') ||
+         error.message.includes('PROTOCOL_CONNECTION_LOST'))) {
+      console.log('[DB] Resetting pool due to connection error');
+      pool = null;
+    }
+    throw error;
+  } finally {
+    if (connection) {
       connection.release();
     }
-  } catch (error) {
-    console.error('Query execution error:', error);
-    throw error;
   }
 }
