@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const montoMinimo = Number(searchParams.get('monto_minimo')) || 1000;
-    const limit = Math.min(Number(searchParams.get('limit')) || 30, 100); // Max 100
+    const limit = Math.min(Number(searchParams.get('limit')) || 2, 100); // Default 2 para pruebas
     const usarTelefonoReal = searchParams.get('test_phone') === 'false';
 
     console.log('[API n8n/deudores-pendientes] Iniciando consulta...');
