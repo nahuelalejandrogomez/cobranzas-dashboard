@@ -138,35 +138,52 @@ export async function GET(request: Request) {
     }));
 
     // Calcular estadísticas agregadas del mes actual y totales históricos
+    // Reglas: CA=Cobrado, DE=Deuda, AD=Adeudado parcial, BO=Bonificado (no cuenta)
     const statsQuery = `
-      SELECT 
+      SELECT
         -- MES ACTUAL
-        -- Cantidad de cupones con deuda del mes actual
+        -- Cantidad de cupones con deuda del mes actual (solo AD y DE)
         COUNT(*) as cuponesDeudaMesActual,
-        -- $ deuda del mes actual
+        -- $ deuda del mes actual (IMPLIQUIDA - ABOLIQUIDA solo de AD y DE)
         COALESCE(SUM(IMPLIQUIDA - ABOLIQUIDA), 0) as deudaMesActual,
-        -- $ cobrado del mes actual (todas las liquidaciones del período)
-        (SELECT COALESCE(SUM(ABOLIQUIDA), 0) 
-         FROM Liquidaciones 
-         WHERE YEAR(PERLIQUIDANRO) = ? 
-           AND MONTH(PERLIQUIDANRO) = ?) as cobradoMesActual,
-        
+        -- $ cobrado del mes actual (ABOLIQUIDA solo de CA y AD, NO incluye BO)
+        (SELECT COALESCE(SUM(ABOLIQUIDA), 0)
+         FROM Liquidaciones
+         WHERE YEAR(PERLIQUIDANRO) = ?
+           AND MONTH(PERLIQUIDANRO) = ?
+           AND ESTLIQUIDA IN ('CA', 'AD')) as cobradoMesActual,
+        -- $ bonificado del mes actual (IMPLIQUIDA - ABOLIQUIDA de BO)
+        (SELECT COALESCE(SUM(IMPLIQUIDA - ABOLIQUIDA), 0)
+         FROM Liquidaciones
+         WHERE YEAR(PERLIQUIDANRO) = ?
+           AND MONTH(PERLIQUIDANRO) = ?
+           AND ESTLIQUIDA = 'BO') as bonificadoMesActual,
+
         -- TOTAL HISTÓRICO
-        -- Cantidad de cupones con deuda histórica (todos los períodos)
-        (SELECT COUNT(*) 
-         FROM Liquidaciones 
+        -- Cantidad de cupones con deuda histórica (solo AD y DE)
+        (SELECT COUNT(*)
+         FROM Liquidaciones
          WHERE ESTLIQUIDA IN ('AD', 'DE')) as cuponesDeudaTotal,
-        -- $ deuda total histórica
-        (SELECT COALESCE(SUM(IMPLIQUIDA - ABOLIQUIDA), 0) 
-         FROM Liquidaciones 
-         WHERE ESTLIQUIDA IN ('AD', 'DE')) as deudaTotal
+        -- $ deuda total histórica (IMPLIQUIDA - ABOLIQUIDA solo de AD y DE)
+        (SELECT COALESCE(SUM(IMPLIQUIDA - ABOLIQUIDA), 0)
+         FROM Liquidaciones
+         WHERE ESTLIQUIDA IN ('AD', 'DE')) as deudaTotal,
+        -- $ cobrado total histórico (ABOLIQUIDA solo de CA y AD)
+        (SELECT COALESCE(SUM(ABOLIQUIDA), 0)
+         FROM Liquidaciones
+         WHERE ESTLIQUIDA IN ('CA', 'AD')) as cobradoTotal,
+        -- $ bonificado total histórico (IMPLIQUIDA - ABOLIQUIDA de BO)
+        (SELECT COALESCE(SUM(IMPLIQUIDA - ABOLIQUIDA), 0)
+         FROM Liquidaciones
+         WHERE ESTLIQUIDA = 'BO') as bonificadoTotal
       FROM Liquidaciones
-      WHERE YEAR(PERLIQUIDANRO) = ? 
+      WHERE YEAR(PERLIQUIDANRO) = ?
         AND MONTH(PERLIQUIDANRO) = ?
         AND ESTLIQUIDA IN ('AD', 'DE')
     `;
 
     const [statsResult] = (await executeQuery(statsQuery, [
+      currentPeriod.getFullYear(), currentPeriod.getMonth() + 1,
       currentPeriod.getFullYear(), currentPeriod.getMonth() + 1,
       currentPeriod.getFullYear(), currentPeriod.getMonth() + 1
     ])) as any[];
@@ -178,9 +195,12 @@ export async function GET(request: Request) {
         cuponesDeudaMesActual: Number(statsResult?.cuponesDeudaMesActual) || 0,
         deudaMesActual: Number(statsResult?.deudaMesActual) || 0,
         cobradoMesActual: Number(statsResult?.cobradoMesActual) || 0,
+        bonificadoMesActual: Number(statsResult?.bonificadoMesActual) || 0,
         // Total Histórico
         cuponesDeudaTotal: Number(statsResult?.cuponesDeudaTotal) || 0,
         deudaTotal: Number(statsResult?.deudaTotal) || 0,
+        cobradoTotal: Number(statsResult?.cobradoTotal) || 0,
+        bonificadoTotal: Number(statsResult?.bonificadoTotal) || 0,
       }
     });
   } catch (error) {

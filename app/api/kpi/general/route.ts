@@ -15,22 +15,26 @@ export async function GET(request: Request) {
     let currentQuery: string;
     let currentParams: any[];
 
+    // Reglas de negocio:
+    // CA = Cobrado completo, AD = Adeudado parcial, DE = Deuda completa, BO = Bonificado
+    // cobrado = ABOLIQUIDA solo de CA y AD (NO incluye BO)
+    // deuda = (IMPLIQUIDA - ABOLIQUIDA) solo de AD y DE
     if (startDate && endDate) {
       currentQuery = `
-        SELECT 
-          COALESCE(SUM(ABOLIQUIDA), 0) as totalRecaudado,
-          COALESCE(SUM(ABOLIQUIDA), 0) as cobrado,
-          COALESCE(SUM(IMPLIQUIDA - ABOLIQUIDA), 0) as deuda
+        SELECT
+          COALESCE(SUM(CASE WHEN ESTLIQUIDA IN ('CA', 'AD') THEN ABOLIQUIDA ELSE 0 END), 0) as totalRecaudado,
+          COALESCE(SUM(CASE WHEN ESTLIQUIDA IN ('CA', 'AD') THEN ABOLIQUIDA ELSE 0 END), 0) as cobrado,
+          COALESCE(SUM(CASE WHEN ESTLIQUIDA IN ('AD', 'DE') THEN (IMPLIQUIDA - ABOLIQUIDA) ELSE 0 END), 0) as deuda
         FROM Liquidaciones
         WHERE PERLIQUIDANRO BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)
       `;
       currentParams = [startDate, endDate];
     } else {
       currentQuery = `
-        SELECT 
-          COALESCE(SUM(ABOLIQUIDA), 0) as totalRecaudado,
-          COALESCE(SUM(ABOLIQUIDA), 0) as cobrado,
-          COALESCE(SUM(IMPLIQUIDA - ABOLIQUIDA), 0) as deuda
+        SELECT
+          COALESCE(SUM(CASE WHEN ESTLIQUIDA IN ('CA', 'AD') THEN ABOLIQUIDA ELSE 0 END), 0) as totalRecaudado,
+          COALESCE(SUM(CASE WHEN ESTLIQUIDA IN ('CA', 'AD') THEN ABOLIQUIDA ELSE 0 END), 0) as cobrado,
+          COALESCE(SUM(CASE WHEN ESTLIQUIDA IN ('AD', 'DE') THEN (IMPLIQUIDA - ABOLIQUIDA) ELSE 0 END), 0) as deuda
         FROM Liquidaciones
         WHERE YEAR(PERLIQUIDANRO) = ? AND MONTH(PERLIQUIDANRO) = ?
       `;
@@ -42,9 +46,9 @@ export async function GET(request: Request) {
     const totalCobrado = Number(currentResult?.cobrado) || 0;
     const totalDeuda = Number(currentResult?.deuda) || 0;
 
-    // Total mes anterior - CONSISTENCIA: usar ABOLIQUIDA (monto cobrado) no IMPLIQUIDA (monto total)
+    // Total mes anterior - Solo CA y AD (NO incluye BO)
     const previousQuery = `
-      SELECT COALESCE(SUM(ABOLIQUIDA), 0) as totalCobrado
+      SELECT COALESCE(SUM(CASE WHEN ESTLIQUIDA IN ('CA', 'AD') THEN ABOLIQUIDA ELSE 0 END), 0) as totalCobrado
       FROM Liquidaciones
       WHERE YEAR(PERLIQUIDANRO) = ? AND MONTH(PERLIQUIDANRO) = ?
     `;
@@ -81,12 +85,16 @@ export async function GET(request: Request) {
     let estadoQuery: string;
     let estadoParams: any[];
 
+    // Query de desglose por estado
+    // deuda = (IMPLIQUIDA - ABOLIQUIDA) para AD y DE
+    // bonificado = (IMPLIQUIDA - ABOLIQUIDA) para BO
     if (startDate && endDate) {
       estadoQuery = `
-        SELECT 
+        SELECT
           ESTLIQUIDA as estado,
           COALESCE(SUM(IMPLIQUIDA), 0) as monto,
-          COALESCE(SUM(IMPLIQUIDA - ABOLIQUIDA), 0) as deuda
+          COALESCE(SUM(IMPLIQUIDA - ABOLIQUIDA), 0) as deuda,
+          COALESCE(SUM(ABOLIQUIDA), 0) as cobrado
         FROM Liquidaciones
         WHERE PERLIQUIDANRO BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)
         GROUP BY ESTLIQUIDA
@@ -94,10 +102,11 @@ export async function GET(request: Request) {
       estadoParams = [startDate, endDate];
     } else {
       estadoQuery = `
-        SELECT 
+        SELECT
           ESTLIQUIDA as estado,
           COALESCE(SUM(IMPLIQUIDA), 0) as monto,
-          COALESCE(SUM(IMPLIQUIDA - ABOLIQUIDA), 0) as deuda
+          COALESCE(SUM(IMPLIQUIDA - ABOLIQUIDA), 0) as deuda,
+          COALESCE(SUM(ABOLIQUIDA), 0) as cobrado
         FROM Liquidaciones
         WHERE YEAR(PERLIQUIDANRO) = ? AND MONTH(PERLIQUIDANRO) = ?
         GROUP BY ESTLIQUIDA
@@ -106,32 +115,32 @@ export async function GET(request: Request) {
     }
 
     const estadoResults = (await executeQuery(estadoQuery, estadoParams)) as any[];
-    
-    // CONCEPTO GLOBAL: usar totales globales ya calculados
-    // deudaCompleta = Total deuda de cupones AD
-    // deudaParcial = Total deuda de cupones DE  
-    // pagadoCompleto = totalCobrado (ya calculado globalmente)
-    // bonificado = Total de cupones BO
-    let deudaCompleta = 0;     // AD - Deuda de cupones AD
-    let deudaParcial = 0;      // DE - Deuda de cupones DE
-    let bonificado = 0;        // BO - Monto de bonificados
+
+    // Desglose por estado:
+    // AD = Adeudado parcial: tiene deuda pendiente (IMPLIQUIDA - ABOLIQUIDA)
+    // DE = Deuda completa: tiene deuda pendiente (IMPLIQUIDA - ABOLIQUIDA)
+    // BO = Bonificado: monto bonificado (IMPLIQUIDA - ABOLIQUIDA), NO cuenta como cobrado ni adeudado
+    // CA = Cobrado completo: sin deuda
+    let deudaCompleta = 0;     // DE - Deuda de cupones DE (deuda total)
+    let deudaParcial = 0;      // AD - Deuda de cupones AD (deuda parcial)
+    let bonificado = 0;        // BO - Monto bonificado (IMPLIQUIDA - ABOLIQUIDA)
 
     for (const row of estadoResults) {
       switch (row.estado) {
         case 'AD':
-          deudaCompleta = Number(row.deuda) || 0;
-          break;
-        case 'DE':
           deudaParcial = Number(row.deuda) || 0;
           break;
-        case 'BO':
-          bonificado = Number(row.monto) || 0;
+        case 'DE':
+          deudaCompleta = Number(row.deuda) || 0;
           break;
-        // CA se maneja globalmente con totalCobrado
+        case 'BO':
+          // Bonificado = IMPLIQUIDA - ABOLIQUIDA de BO
+          bonificado = Number(row.deuda) || 0;
+          break;
       }
     }
 
-    // GLOBAL: pagadoCompleto = totalCobrado (suma de ABOLIQUIDA de todas las liquidaciones)
+    // pagadoCompleto = totalCobrado (ya calculado con CA y AD solamente)
     const pagadoCompleto = totalCobrado;
 
     const variation =

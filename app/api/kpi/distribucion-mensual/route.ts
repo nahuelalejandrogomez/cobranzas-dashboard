@@ -5,18 +5,24 @@ export async function GET() {
   try {
     console.log('[API distribucion-mensual] Starting query...');
 
-    // Query simplificada para evitar problemas
+    // Query corregida con reglas de negocio:
+    // CA = Cobrado completo, AD = Adeudado parcial, DE = Deuda completa, BO = Bonificado
+    // cuponesCobrados = CA + AD (cupones donde se cobró algo)
+    // montoCobrado = ABOLIQUIDA solo de CA y AD (NO incluye BO)
+    // cuponesAdeudados = AD + DE (cupones con deuda pendiente)
+    // montoAdeudado = (IMPLIQUIDA - ABOLIQUIDA) solo de AD y DE
+    // montoBonificado = (IMPLIQUIDA - ABOLIQUIDA) de BO
     const query = `
       SELECT
         YEAR(PERLIQUIDANRO) as año,
         MONTH(PERLIQUIDANRO) as mes_numero,
         MONTHNAME(PERLIQUIDANRO) as mes,
-        COUNT(CASE WHEN ESTLIQUIDA = 'CA' THEN 1 END) as cuponesCobrados,
-        COALESCE(SUM(ABOLIQUIDA), 0) as montoCobrado,
+        COUNT(CASE WHEN ESTLIQUIDA IN ('CA', 'AD') THEN 1 END) as cuponesCobrados,
+        COALESCE(SUM(CASE WHEN ESTLIQUIDA IN ('CA', 'AD') THEN ABOLIQUIDA ELSE 0 END), 0) as montoCobrado,
         COUNT(CASE WHEN ESTLIQUIDA IN ('AD', 'DE') THEN 1 END) as cuponesAdeudados,
-        COALESCE(SUM(IMPLIQUIDA - ABOLIQUIDA), 0) as montoAdeudado,
+        COALESCE(SUM(CASE WHEN ESTLIQUIDA IN ('AD', 'DE') THEN (IMPLIQUIDA - ABOLIQUIDA) ELSE 0 END), 0) as montoAdeudado,
         COUNT(CASE WHEN ESTLIQUIDA = 'BO' THEN 1 END) as cuponesBonificados,
-        COALESCE(SUM(CASE WHEN ESTLIQUIDA = 'BO' THEN IMPLIQUIDA ELSE 0 END), 0) as montoBonificado
+        COALESCE(SUM(CASE WHEN ESTLIQUIDA = 'BO' THEN (IMPLIQUIDA - ABOLIQUIDA) ELSE 0 END), 0) as montoBonificado
       FROM Liquidaciones
       WHERE PERLIQUIDANRO IS NOT NULL
         AND PERLIQUIDANRO >= DATE_SUB(CURDATE(), INTERVAL 5 MONTH)

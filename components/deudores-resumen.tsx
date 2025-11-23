@@ -10,10 +10,13 @@ interface DeudoresStats {
   // Mes Actual
   cuponesDeudaMesActual: number;   // Cantidad de cupones con deuda (mes actual)
   deudaMesActual: number;          // $ deuda del mes actual
-  cobradoMesActual: number;        // $ cobrado del mes actual
+  cobradoMesActual: number;        // $ cobrado del mes actual (solo CA y AD)
+  bonificadoMesActual: number;     // $ bonificado del mes actual (BO)
   // Total Histórico
   cuponesDeudaTotal: number;       // Cantidad de cupones con deuda (total)
   deudaTotal: number;              // $ deuda total histórica
+  cobradoTotal: number;            // $ cobrado total histórico (solo CA y AD)
+  bonificadoTotal: number;         // $ bonificado total histórico (BO)
 }
 
 function DeudoresResumen() {
@@ -114,9 +117,13 @@ function DeudoresResumen() {
                   <span className="text-sm text-gray-600">$ Deuda:</span>
                   <span className="text-xl font-bold text-red-600">{formatCurrency(stats.deudaMesActual)}</span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center border-b pb-2">
                   <span className="text-sm text-gray-600">$ Cobrado:</span>
                   <span className="text-xl font-bold text-green-600">{formatCurrency(stats.cobradoMesActual)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">$ Bonificado:</span>
+                  <span className="text-xl font-bold text-orange-600">{formatCurrency(stats.bonificadoMesActual || 0)}</span>
                 </div>
               </CardContent>
             </Card>
@@ -131,9 +138,17 @@ function DeudoresResumen() {
                   <span className="text-sm text-gray-600">Cupones con deuda:</span>
                   <span className="text-xl font-bold text-purple-600">{stats.cuponesDeudaTotal}</span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center border-b pb-2">
                   <span className="text-sm text-gray-600">$ Deuda:</span>
                   <span className="text-xl font-bold text-red-700">{formatCurrency(stats.deudaTotal)}</span>
+                </div>
+                <div className="flex justify-between items-center border-b pb-2">
+                  <span className="text-sm text-gray-600">$ Cobrado:</span>
+                  <span className="text-xl font-bold text-green-700">{formatCurrency(stats.cobradoTotal || 0)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">$ Bonificado:</span>
+                  <span className="text-xl font-bold text-orange-700">{formatCurrency(stats.bonificadoTotal || 0)}</span>
                 </div>
               </CardContent>
             </Card>
