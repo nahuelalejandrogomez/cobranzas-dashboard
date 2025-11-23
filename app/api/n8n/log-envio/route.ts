@@ -17,6 +17,7 @@ interface LogEnvioRequest {
   canal?: string;
   workflow_id?: string;
   respuesta_api?: string;
+  errormessage?: string;
 }
 
 export async function POST(request: Request) {
@@ -54,16 +55,17 @@ export async function POST(request: Request) {
       canal: body.canal || 'whatsapp',
       workflow_id: body.workflow_id || 'cobranzas_n8n',
       hash_mensaje: hashMensaje,
-      respuesta_api: body.respuesta_api || null
+      respuesta_api: body.respuesta_api || null,
+      errormessage: body.errormessage || null
     };
 
     const fechaArgentina = getArgentinaDateTime();
 
     const query = `
       INSERT INTO MensajesEnviados
-        (NUMSOCIO, telefono, mensaje, fecha_envio, estado_envio, canal, workflow_id, hash_mensaje, respuesta_api)
+        (NUMSOCIO, telefono, mensaje, fecha_envio, estado_envio, canal, workflow_id, hash_mensaje, respuesta_api, errormessage)
       VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     await executeQuery(query, [
@@ -75,7 +77,8 @@ export async function POST(request: Request) {
       datos.canal,
       datos.workflow_id,
       datos.hash_mensaje,
-      datos.respuesta_api
+      datos.respuesta_api,
+      datos.errormessage
     ]);
 
     console.log('[API n8n/log-envio] Registro guardado para socio:', datos.NUMSOCIO);
