@@ -7,6 +7,7 @@ import { KPIData } from '@/lib/types';
 import { Navbar } from '@/components/navbar';
 import { DeudasChart } from '@/components/deudas-chart';
 import DeudoresResumen from '../components/deudores-resumen';
+import { MensajesMonitoreo } from '@/components/mensajes-monitoreo';
 import { formatCurrency } from '@/lib/format-utils';
 
 export default function Dashboard() {
@@ -83,6 +84,9 @@ export default function Dashboard() {
 
           {/* 2. DISTRIBUCIÓN MENSUAL - Segunda sección */}
           <DeudasChart />
+
+          {/* 3. MONITOREO DE MENSAJES - Tercera sección */}
+          <MensajesMonitoreo />
         </div>
       </main>
     </>
