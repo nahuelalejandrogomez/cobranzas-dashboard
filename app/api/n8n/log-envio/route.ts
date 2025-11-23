@@ -1,6 +1,14 @@
 import { executeQuery } from '@/lib/db';
 import { createHash } from 'crypto';
 
+// Obtener fecha/hora en Argentina (UTC-3)
+function getArgentinaDateTime(): string {
+  const now = new Date();
+  const argentinaOffset = -3 * 60; // UTC-3 en minutos
+  const argentinaTime = new Date(now.getTime() + (argentinaOffset - now.getTimezoneOffset()) * 60000);
+  return argentinaTime.toISOString().slice(0, 19).replace('T', ' ');
+}
+
 interface LogEnvioRequest {
   socio_id: string | number;
   telefono?: string;
@@ -49,17 +57,20 @@ export async function POST(request: Request) {
       respuesta_api: body.respuesta_api || null
     };
 
+    const fechaArgentina = getArgentinaDateTime();
+
     const query = `
       INSERT INTO MensajesEnviados
-        (NUMSOCIO, telefono, mensaje, estado_envio, canal, workflow_id, hash_mensaje, respuesta_api)
+        (NUMSOCIO, telefono, mensaje, fecha_envio, estado_envio, canal, workflow_id, hash_mensaje, respuesta_api)
       VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?)
+        (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     await executeQuery(query, [
       datos.NUMSOCIO,
       datos.telefono,
       datos.mensaje,
+      fechaArgentina,
       datos.estado_envio,
       datos.canal,
       datos.workflow_id,
