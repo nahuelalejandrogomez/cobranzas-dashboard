@@ -13,10 +13,10 @@ import { executeQuery } from '@/lib/db';
  * Parámetros opcionales:
  * - ?monto_minimo=1000 (default 1000)
  * - ?limit=30 (default 30)
- * - ?test_phone=541134722453 (si se omite, usa el real de la BD)
+ * - ?test_phone=541134722453 (si se omite, usa el real de la BD). ID de telegram: '812001079';
  */
 
-const TELEFONO_PRUEBA = '812001079';
+const TELEFONO_PRUEBA = '4732894732894732894738297';
 
 interface LiquidacionPendiente {
   mes: string;
