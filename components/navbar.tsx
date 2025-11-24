@@ -45,6 +45,12 @@ export function Navbar({ username }: NavbarProps) {
             >
               Buscar Socios
             </Link>
+            <Link
+              href="/observabilidad"
+              className="text-sm text-gray-600 hover:text-gray-900"
+            >
+              Observabilidad
+            </Link>
           </div>
         </div>
 
