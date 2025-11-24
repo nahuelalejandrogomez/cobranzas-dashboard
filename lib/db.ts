@@ -8,12 +8,12 @@ export async function getPool() {
     return pool;
   }
 
-  // Usando DB_* (Railway) - v4
-  const host = process.env.DB_HOST;
-  const user = process.env.DB_USER;
-  const password = process.env.DB_PASSWORD;
-  const database = process.env.DB_NAME;
-  const port = Number(process.env.DB_PORT || 3306);
+  // Usando variables de Railway MySQL (MYSQL*) con fallback a DB_* - v5
+  const host = process.env.MYSQLHOST || process.env.DB_HOST;
+  const user = process.env.MYSQLUSER || process.env.DB_USER;
+  const password = process.env.MYSQLPASSWORD || process.env.DB_PASSWORD;
+  const database = process.env.MYSQLDATABASE || process.env.DB_NAME;
+  const port = Number(process.env.MYSQLPORT || process.env.DB_PORT || 3306);
 
   console.log('[DB] Creating pool - Host:', host, 'Database:', database, 'Port:', port);
 
