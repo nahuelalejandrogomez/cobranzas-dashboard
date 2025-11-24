@@ -3,7 +3,7 @@ import { executeQuery } from '@/lib/db';
 // Obtener fecha/hora en Argentina (UTC-3)
 function getArgentinaDateTime(): string {
   const now = new Date();
-  const argentinaOffset = -3 * 60;
+  const argentinaOffset = -3 * 60; // UTC-3 en minutos
   const argentinaTime = new Date(now.getTime() + (argentinaOffset - now.getTimezoneOffset()) * 60000);
   return argentinaTime.toISOString().slice(0, 19).replace('T', ' ');
 }
@@ -23,37 +23,66 @@ export async function POST(request: Request) {
   try {
     const body: ConversacionLogRequest = await request.json();
 
-    // Validaciones
-    if (!body.telefono || !body.mensaje || !body.rol || !body.canal) {
+    console.log('[API conversaciones/log] Recibido:', {
+      telefono: body.telefono,
+      socio_id: body.socio_id,
+      rol: body.rol,
+      canal: body.canal,
+      mensaje_length: body.mensaje?.length
+    });
+
+    if (!body.telefono) {
       return Response.json(
-        {
-          status: 'error',
-          detalle: 'Campos obligatorios: telefono, mensaje, rol, canal'
-        },
+        { status: 'error', detalle: 'campo faltante: telefono' },
         { status: 400 }
       );
     }
 
-    // Validar valores de enum
+    if (!body.mensaje || body.mensaje.trim() === '') {
+      return Response.json(
+        { status: 'error', detalle: 'campo faltante: mensaje' },
+        { status: 400 }
+      );
+    }
+
+    if (!body.rol) {
+      return Response.json(
+        { status: 'error', detalle: 'campo faltante: rol' },
+        { status: 400 }
+      );
+    }
+
     if (!['usuario', 'bot', 'agente'].includes(body.rol)) {
       return Response.json(
-        {
-          status: 'error',
-          detalle: 'rol debe ser: usuario, bot o agente'
-        },
+        { status: 'error', detalle: 'rol debe ser: usuario, bot o agente' },
+        { status: 400 }
+      );
+    }
+
+    if (!body.canal) {
+      return Response.json(
+        { status: 'error', detalle: 'campo faltante: canal' },
         { status: 400 }
       );
     }
 
     if (!['whatsapp', 'telegram'].includes(body.canal)) {
       return Response.json(
-        {
-          status: 'error',
-          detalle: 'canal debe ser: whatsapp o telegram'
-        },
+        { status: 'error', detalle: 'canal debe ser: whatsapp o telegram' },
         { status: 400 }
       );
     }
+
+    const datos = {
+      telefono: body.telefono,
+      socio_id: body.socio_id || null,
+      rol: body.rol,
+      mensaje: body.mensaje,
+      canal: body.canal,
+      workflow_id: body.workflow_id || null,
+      conversacion_id: body.conversacion_id || null,
+      raw_json: body.raw_json || null
+    };
 
     const fechaArgentina = getArgentinaDateTime();
 
@@ -65,16 +94,18 @@ export async function POST(request: Request) {
     `;
 
     await executeQuery(query, [
-      body.telefono,
-      body.socio_id || null,
-      body.rol,
-      body.mensaje,
-      body.canal,
+      datos.telefono,
+      datos.socio_id,
+      datos.rol,
+      datos.mensaje,
+      datos.canal,
       fechaArgentina,
-      body.workflow_id || null,
-      body.conversacion_id || null,
-      body.raw_json || null
+      datos.workflow_id,
+      datos.conversacion_id,
+      datos.raw_json
     ]);
+
+    console.log('[API conversaciones/log] Registro guardado para telefono:', datos.telefono);
 
     return Response.json({ status: 'ok' });
 
