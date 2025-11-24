@@ -32,37 +32,16 @@ interface ErrorMensaje {
   mensaje: string;
 }
 
-// ===== INTERFACES IA =====
-interface ResumenIA {
+// ===== INTERFACES OPENAI API =====
+interface OpenAIUsage {
   total_requests: number;
   total_tokens: number;
   input_tokens: number;
   output_tokens: number;
-  avg_latency: number;
-  tasa_error: number;
-  workflows_mas_usados: { workflow_id: string; requests: number; tokens: number }[];
-}
-
-interface DatosDiaIA {
-  fecha: string;
-  requests: number;
-  tokens: number;
-}
-
-interface DatosWorkflow {
-  workflow_id: string;
-  requests: number;
-  tokens: number;
-  avg_latency: number;
-}
-
-interface ErrorIA {
-  workflow_id: string;
-  socio_id: string;
-  telefono: string;
-  errormessage: string;
-  model_used: string;
-  created_at: string;
+  por_dia: { fecha: string; tokens: number; requests: number }[];
+  por_modelo: { modelo: string; requests: number; tokens: number }[];
+  dias_consultados: number;
+  errores: { fecha: string; error: string | number }[];
 }
 
 export default function ObservabilidadPage() {
@@ -77,14 +56,10 @@ export default function ObservabilidadPage() {
   const [ultimos7Dias, setUltimos7Dias] = useState<DatosDia[]>([]);
   const [erroresMensajes, setErroresMensajes] = useState<ErrorMensaje[]>([]);
 
-  // Estado IA
+  // Estado IA (OpenAI API)
   const [loadingIA, setLoadingIA] = useState(true);
-  const [mesSeleccionado, setMesSeleccionado] = useState(new Date().getMonth() + 1);
-  const [anioSeleccionado, setAnioSeleccionado] = useState(new Date().getFullYear());
-  const [resumenIA, setResumenIA] = useState<ResumenIA | null>(null);
-  const [datosPorDiaIA, setDatosPorDiaIA] = useState<DatosDiaIA[]>([]);
-  const [datosPorWorkflow, setDatosPorWorkflow] = useState<DatosWorkflow[]>([]);
-  const [erroresIA, setErroresIA] = useState<ErrorIA[]>([]);
+  const [openaiUsage, setOpenaiUsage] = useState<OpenAIUsage | null>(null);
+  const [openaiError, setOpenaiError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -126,24 +101,24 @@ export default function ObservabilidadPage() {
     }
   };
 
-  // Fetch IA
+  // Fetch IA desde OpenAI API
   const fetchIA = async () => {
     setLoadingIA(true);
+    setOpenaiError(null);
     try {
-      const params = `?mes=${mesSeleccionado}&anio=${anioSeleccionado}`;
-      const [resumenRes, diaRes, workflowRes, erroresRes] = await Promise.all([
-        fetch(`/api/observabilidad-ia/resumen-mensual${params}`),
-        fetch(`/api/observabilidad-ia/mensual-por-dia${params}`),
-        fetch(`/api/observabilidad-ia/mensual-por-workflow${params}`),
-        fetch('/api/observabilidad-ia/errores')
-      ]);
-      if (resumenRes.ok) setResumenIA(await resumenRes.json());
-      if (diaRes.ok) setDatosPorDiaIA(await diaRes.json());
-      if (workflowRes.ok) setDatosPorWorkflow(await workflowRes.json());
-      if (erroresRes.ok) setErroresIA(await erroresRes.json());
+      const res = await fetch('/api/observabilidad-ia/openai-usage?dias=7');
+      const data = await res.json();
+
+      if (data.error) {
+        setOpenaiError(data.error);
+        setOpenaiUsage(null);
+      } else {
+        setOpenaiUsage(data);
+      }
       setLastUpdate(new Date());
     } catch (error) {
       console.error('Error fetching IA:', error);
+      setOpenaiError('Error de conexión');
     } finally {
       setLoadingIA(false);
     }
@@ -162,7 +137,7 @@ export default function ObservabilidadPage() {
       }, REFRESH_INTERVAL);
       return () => clearInterval(interval);
     }
-  }, [checking, activeTab, mesSeleccionado, anioSeleccionado]);
+  }, [checking, activeTab]);
 
   if (checking) {
     return (
@@ -173,8 +148,8 @@ export default function ObservabilidadPage() {
   }
 
   const maxTotalMensajes = Math.max(...ultimos7Dias.map(d => d.total), 1);
-  const maxTokensIA = Math.max(...datosPorDiaIA.map(d => d.tokens), 1);
-  const maxRequestsWorkflow = Math.max(...datosPorWorkflow.map(d => d.requests), 1);
+  const maxTokensIA = Math.max(...(openaiUsage?.por_dia?.map(d => d.tokens) || [1]), 1);
+  const maxTokensModelo = Math.max(...(openaiUsage?.por_modelo?.map(d => d.tokens) || [1]), 1);
 
   return (
     <>
@@ -342,63 +317,45 @@ export default function ObservabilidadPage() {
             )
           )}
 
-          {/* ===== TAB IA ===== */}
+          {/* ===== TAB IA (OpenAI API) ===== */}
           {activeTab === 'ia' && (
             <div className="space-y-8">
-              {/* Selector de Mes */}
-              <div className="flex gap-4 items-center">
-                <label className="text-sm text-gray-600">Mes:</label>
-                <select
-                  value={mesSeleccionado}
-                  onChange={(e) => setMesSeleccionado(Number(e.target.value))}
-                  className="border border-gray-300 rounded px-3 py-2 text-sm"
-                >
-                  {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                    <option key={m} value={m}>{new Date(2000, m-1).toLocaleDateString('es-AR', { month: 'long' })}</option>
-                  ))}
-                </select>
-                <select
-                  value={anioSeleccionado}
-                  onChange={(e) => setAnioSeleccionado(Number(e.target.value))}
-                  className="border border-gray-300 rounded px-3 py-2 text-sm"
-                >
-                  {[2024, 2025].map(a => (
-                    <option key={a} value={a}>{a}</option>
-                  ))}
-                </select>
-              </div>
-
               {loadingIA ? (
-                <div className="text-gray-500">Cargando datos de IA...</div>
+                <div className="text-gray-500">Consultando API de OpenAI...</div>
+              ) : openaiError ? (
+                <Card className="bg-red-50 border border-red-200">
+                  <CardContent className="pt-6">
+                    <div className="text-red-600 text-center py-4">
+                      <p className="font-medium">Error al consultar OpenAI</p>
+                      <p className="text-sm mt-1">{openaiError}</p>
+                      <p className="text-xs mt-2 text-gray-500">Verificá que OPENAI_API_KEY y OPENAI_ORG_ID estén configuradas en Railway</p>
+                    </div>
+                  </CardContent>
+                </Card>
               ) : (
                 <>
-                  {/* KPIs IA */}
+                  {/* KPIs OpenAI */}
                   <div>
-                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Resumen del Mes</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                      Resumen Últimos 7 Días
+                      <span className="text-sm font-normal text-gray-500 ml-2">(datos de OpenAI API)</span>
+                    </h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <Card className="bg-white border border-gray-200">
                         <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-gray-600">Requests</CardTitle></CardHeader>
-                        <CardContent><div className="text-2xl font-bold text-purple-600">{resumenIA?.total_requests || 0}</div></CardContent>
+                        <CardContent><div className="text-2xl font-bold text-purple-600">{openaiUsage?.total_requests?.toLocaleString() || 0}</div></CardContent>
                       </Card>
                       <Card className="bg-white border border-gray-200">
                         <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-gray-600">Tokens Totales</CardTitle></CardHeader>
-                        <CardContent><div className="text-2xl font-bold text-gray-900">{(resumenIA?.total_tokens || 0).toLocaleString()}</div></CardContent>
+                        <CardContent><div className="text-2xl font-bold text-gray-900">{openaiUsage?.total_tokens?.toLocaleString() || 0}</div></CardContent>
                       </Card>
                       <Card className="bg-white border border-gray-200">
                         <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-gray-600">Input Tokens</CardTitle></CardHeader>
-                        <CardContent><div className="text-2xl font-bold text-blue-600">{(resumenIA?.input_tokens || 0).toLocaleString()}</div></CardContent>
+                        <CardContent><div className="text-2xl font-bold text-blue-600">{openaiUsage?.input_tokens?.toLocaleString() || 0}</div></CardContent>
                       </Card>
                       <Card className="bg-white border border-gray-200">
                         <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-gray-600">Output Tokens</CardTitle></CardHeader>
-                        <CardContent><div className="text-2xl font-bold text-green-600">{(resumenIA?.output_tokens || 0).toLocaleString()}</div></CardContent>
-                      </Card>
-                      <Card className="bg-white border border-gray-200">
-                        <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-gray-600">Latencia Prom.</CardTitle></CardHeader>
-                        <CardContent><div className="text-2xl font-bold text-orange-600">{resumenIA?.avg_latency || 0}ms</div></CardContent>
-                      </Card>
-                      <Card className={`border-2 ${(resumenIA?.tasa_error || 0) <= 5 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                        <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-gray-600">Tasa Error</CardTitle></CardHeader>
-                        <CardContent><div className={`text-2xl font-bold ${(resumenIA?.tasa_error || 0) <= 5 ? 'text-green-600' : 'text-red-600'}`}>{resumenIA?.tasa_error || 0}%</div></CardContent>
+                        <CardContent><div className="text-2xl font-bold text-green-600">{openaiUsage?.output_tokens?.toLocaleString() || 0}</div></CardContent>
                       </Card>
                     </div>
                   </div>
@@ -408,20 +365,20 @@ export default function ObservabilidadPage() {
                     <h2 className="text-xl font-semibold text-gray-900 mb-4">Uso por Día</h2>
                     <Card className="bg-white border border-gray-200">
                       <CardContent className="pt-6">
-                        {datosPorDiaIA.length === 0 ? (
-                          <div className="text-gray-500 text-center py-8">No hay datos este mes</div>
+                        {(!openaiUsage?.por_dia || openaiUsage.por_dia.length === 0) ? (
+                          <div className="text-gray-500 text-center py-8">No hay datos disponibles</div>
                         ) : (
                           <div className="space-y-3">
-                            {datosPorDiaIA.map((dia) => {
+                            {openaiUsage.por_dia.map((dia) => {
                               const fecha = new Date(dia.fecha);
-                              const fechaStr = fecha.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
+                              const fechaStr = fecha.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short' });
                               return (
                                 <div key={dia.fecha} className="flex items-center gap-3">
-                                  <div className="w-16 text-xs text-gray-600 text-right">{fechaStr}</div>
+                                  <div className="w-24 text-xs text-gray-600 text-right">{fechaStr}</div>
                                   <div className="flex-1 h-6 bg-gray-100 rounded overflow-hidden">
-                                    <div className="h-full bg-purple-500 rounded" style={{ width: `${(dia.tokens / maxTokensIA) * 100}%` }} title={`${dia.tokens} tokens`}></div>
+                                    <div className="h-full bg-purple-500 rounded" style={{ width: `${(dia.tokens / maxTokensIA) * 100}%` }} title={`${dia.tokens.toLocaleString()} tokens`}></div>
                                   </div>
-                                  <div className="w-24 text-xs text-gray-600 text-right">{dia.requests} req / {dia.tokens.toLocaleString()} tok</div>
+                                  <div className="w-32 text-xs text-gray-600 text-right">{dia.requests} req / {dia.tokens.toLocaleString()} tok</div>
                                 </div>
                               );
                             })}
@@ -431,22 +388,22 @@ export default function ObservabilidadPage() {
                     </Card>
                   </div>
 
-                  {/* Gráfico por Workflow */}
+                  {/* Gráfico por Modelo */}
                   <div>
-                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Uso por Workflow</h2>
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Uso por Modelo</h2>
                     <Card className="bg-white border border-gray-200">
                       <CardContent className="pt-6">
-                        {datosPorWorkflow.length === 0 ? (
-                          <div className="text-gray-500 text-center py-8">No hay datos este mes</div>
+                        {(!openaiUsage?.por_modelo || openaiUsage.por_modelo.length === 0) ? (
+                          <div className="text-gray-500 text-center py-8">No hay datos disponibles</div>
                         ) : (
                           <div className="space-y-3">
-                            {datosPorWorkflow.map((wf) => (
-                              <div key={wf.workflow_id} className="flex items-center gap-3">
-                                <div className="w-32 text-xs text-gray-600 text-right truncate" title={wf.workflow_id}>{wf.workflow_id}</div>
+                            {openaiUsage.por_modelo.map((modelo) => (
+                              <div key={modelo.modelo} className="flex items-center gap-3">
+                                <div className="w-40 text-xs text-gray-600 text-right truncate" title={modelo.modelo}>{modelo.modelo}</div>
                                 <div className="flex-1 h-6 bg-gray-100 rounded overflow-hidden">
-                                  <div className="h-full bg-indigo-500 rounded" style={{ width: `${(wf.requests / maxRequestsWorkflow) * 100}%` }}></div>
+                                  <div className="h-full bg-indigo-500 rounded" style={{ width: `${(modelo.tokens / maxTokensModelo) * 100}%` }}></div>
                                 </div>
-                                <div className="w-32 text-xs text-gray-600 text-right">{wf.requests} req / {wf.avg_latency}ms</div>
+                                <div className="w-36 text-xs text-gray-600 text-right">{modelo.requests} req / {modelo.tokens.toLocaleString()} tok</div>
                               </div>
                             ))}
                           </div>
@@ -455,42 +412,24 @@ export default function ObservabilidadPage() {
                     </Card>
                   </div>
 
-                  {/* Errores IA */}
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Últimos Errores IA {erroresIA.length > 0 && <span className="text-sm font-normal text-gray-500">({erroresIA.length})</span>}</h2>
-                    <Card className="bg-white border border-gray-200">
-                      <CardContent className="pt-6">
-                        {erroresIA.length === 0 ? (
-                          <div className="text-gray-500 text-center py-8">No hay errores de IA registrados</div>
-                        ) : (
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="border-b border-gray-200">
-                                  <th className="text-left py-3 px-2 font-medium text-gray-600">Workflow</th>
-                                  <th className="text-left py-3 px-2 font-medium text-gray-600">Socio</th>
-                                  <th className="text-left py-3 px-2 font-medium text-gray-600">Error</th>
-                                  <th className="text-left py-3 px-2 font-medium text-gray-600">Modelo</th>
-                                  <th className="text-left py-3 px-2 font-medium text-gray-600">Fecha</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {erroresIA.map((error, idx) => (
-                                  <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
-                                    <td className="py-3 px-2 text-gray-600">{error.workflow_id}</td>
-                                    <td className="py-3 px-2"><span className="font-mono text-blue-600">{error.socio_id}</span></td>
-                                    <td className="py-3 px-2"><span className="text-red-600 bg-red-50 px-2 py-1 rounded text-xs">{error.errormessage}</span></td>
-                                    <td className="py-3 px-2 text-gray-500 text-xs">{error.model_used}</td>
-                                    <td className="py-3 px-2 text-gray-500 text-xs">{new Date(error.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                  {/* Errores de consulta */}
+                  {openaiUsage?.errores && openaiUsage.errores.length > 0 && (
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-900 mb-4">Errores de Consulta API</h2>
+                      <Card className="bg-yellow-50 border border-yellow-200">
+                        <CardContent className="pt-6">
+                          <div className="text-sm text-yellow-800">
+                            <p className="mb-2">Algunos días no pudieron consultarse:</p>
+                            <ul className="list-disc list-inside">
+                              {openaiUsage.errores.map((err, idx) => (
+                                <li key={idx}>{err.fecha}: {err.error}</li>
+                              ))}
+                            </ul>
                           </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
                 </>
               )}
             </div>

@@ -16,7 +16,7 @@ import { executeQuery } from '@/lib/db';
  * - ?test_phone=541134722453 (si se omite, usa el real de la BD). ID de telegram: '812001079';
  */
 
-const TELEFONO_PRUEBA = '4732894732894732894738297';
+const TELEFONO_PRUEBA = '812001079';
 
 interface LiquidacionPendiente {
   mes: string;
