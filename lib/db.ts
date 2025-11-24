@@ -8,12 +8,12 @@ export async function getPool() {
     return pool;
   }
 
-  // Solo usamos DB_* (Railway) - v2
-  const host = process.env.DB_HOST;
-  const user = process.env.DB_USER;
-  const password = process.env.DB_PASSWORD;
-  const database = process.env.DB_NAME;
-  const port = Number(process.env.DB_PORT || 3306);
+  // Usando COBRANZA_DB_* (Railway) - v3
+  const host = process.env.COBRANZA_DB_HOST;
+  const user = process.env.COBRANZA_DB_USER;
+  const password = process.env.COBRANZA_DB_PASSWORD;
+  const database = process.env.COBRANZA_DB_NAME;
+  const port = Number(process.env.COBRANZA_DB_PORT || 3306);
 
   console.log('[DB] Creating pool - Host:', host, 'Database:', database, 'Port:', port);
 
