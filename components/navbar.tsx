@@ -49,7 +49,13 @@ export function Navbar({ username }: NavbarProps) {
               href="/observabilidad"
               className="text-sm text-gray-600 hover:text-gray-900"
             >
-              Observabilidad
+              Mensajes
+            </Link>
+            <Link
+              href="/observabilidad-ia"
+              className="text-sm text-gray-600 hover:text-gray-900"
+            >
+              Uso IA
             </Link>
           </div>
         </div>

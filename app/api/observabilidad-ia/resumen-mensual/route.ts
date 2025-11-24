@@ -21,20 +21,19 @@ export async function GET(request: Request) {
 
     const [result] = (await executeQuery(query, [mes, anio])) as any[];
 
-    // Top 5 workflows más usados
-    const workflowsQuery = `
+    // Por modelo
+    const modelosQuery = `
       SELECT
-        workflow_id,
+        model_used,
         COUNT(*) as requests,
-        SUM(total_tokens) as tokens
+        COALESCE(SUM(total_tokens), 0) as tokens
       FROM IAUsageLogs
       WHERE MONTH(created_at) = ? AND YEAR(created_at) = ?
-      GROUP BY workflow_id
-      ORDER BY requests DESC
-      LIMIT 5
+      GROUP BY model_used
+      ORDER BY tokens DESC
     `;
 
-    const workflows = (await executeQuery(workflowsQuery, [mes, anio])) as any[];
+    const modelos = (await executeQuery(modelosQuery, [mes, anio])) as any[];
 
     const totalRequests = Number(result?.total_requests) || 0;
     const totalErrors = Number(result?.total_errors) || 0;
@@ -47,10 +46,10 @@ export async function GET(request: Request) {
       output_tokens: Number(result?.output_tokens) || 0,
       avg_latency: Math.round(Number(result?.avg_latency) || 0),
       tasa_error: tasaError,
-      workflows_mas_usados: workflows.map(w => ({
-        workflow_id: w.workflow_id,
-        requests: Number(w.requests),
-        tokens: Number(w.tokens)
+      por_modelo: modelos.map(m => ({
+        modelo: m.model_used || 'unknown',
+        requests: Number(m.requests) || 0,
+        tokens: Number(m.tokens) || 0
       }))
     });
   } catch (error) {
