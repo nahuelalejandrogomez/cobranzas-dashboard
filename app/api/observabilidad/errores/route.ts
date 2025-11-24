@@ -2,8 +2,6 @@ import { executeQuery } from '@/lib/db';
 
 export async function GET() {
   try {
-    // Captura cualquier estado que no sea 'enviado' (error, failed, etc.)
-    // También incluye registros donde errormessage no esté vacío
     const query = `
       SELECT
         NUMSOCIO as socio_id,
@@ -13,8 +11,7 @@ export async function GET() {
         fecha_envio,
         mensaje
       FROM MensajesEnviados
-      WHERE estado_envio != 'enviado'
-         OR (errormessage IS NOT NULL AND errormessage != '')
+      WHERE estado_envio = 'error'
       ORDER BY fecha_envio DESC
       LIMIT 20
     `;
