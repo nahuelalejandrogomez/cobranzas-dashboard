@@ -58,66 +58,91 @@ export async function GET(request: Request) {
       `;
       params = [startDate, endDate];
     } else {
-      // Query optimizada: usa LEFT JOINs y agregaciones en lugar de subqueries
+      // Query optimizada: usa subqueries para evitar duplicación de filas
       query = `
-        SELECT 
+        SELECT
           S.NUMSOCIO as numsocio,
           S.NOMSOCIO as nomsocio,
           -- Estado predominante del período (tomamos el más reciente)
-          MAX(CASE 
-            WHEN L_per.ESTLIQUIDA IN ('AD', 'DE') 
-            THEN L_per.ESTLIQUIDA 
-            ELSE NULL 
-          END) as estado,
-          -- Cupones con deuda del período actual (filtrado por PERLIQUIDANRO)
-          COUNT(DISTINCT L_per.CUPLIQUIDA) as cuponesVencidosPeriodo,
-          -- Montos del período
-          COALESCE(SUM(CASE 
-            WHEN L_per.ESTLIQUIDA IN ('AD', 'DE') 
-            THEN L_per.IMPLIQUIDA 
-            ELSE 0 
-          END), 0) as montoTotalPeriodo,
-          COALESCE(SUM(CASE 
-            WHEN L_per.ESTLIQUIDA IN ('AD', 'DE') 
-            THEN L_per.ABOLIQUIDA 
-            ELSE 0 
-          END), 0) as montoCobradoPeriodo,
-          COALESCE(SUM(CASE 
-            WHEN L_per.ESTLIQUIDA IN ('AD', 'DE') 
-            THEN (L_per.IMPLIQUIDA - L_per.ABOLIQUIDA) 
-            ELSE 0 
-          END), 0) as deudaPendientePeriodo,
+          (SELECT L.ESTLIQUIDA
+           FROM Liquidaciones L
+           WHERE L.SOCLIQUIDA = S.NUMSOCIO
+             AND YEAR(L.PERLIQUIDANRO) = ?
+             AND MONTH(L.PERLIQUIDANRO) = ?
+             AND L.ESTLIQUIDA IN ('AD', 'DE')
+           ORDER BY L.PERLIQUIDANRO DESC
+           LIMIT 1) as estado,
+          -- Cupones con deuda del período actual
+          (SELECT COUNT(DISTINCT L.CUPLIQUIDA)
+           FROM Liquidaciones L
+           WHERE L.SOCLIQUIDA = S.NUMSOCIO
+             AND YEAR(L.PERLIQUIDANRO) = ?
+             AND MONTH(L.PERLIQUIDANRO) = ?
+             AND L.ESTLIQUIDA IN ('AD', 'DE')) as cuponesVencidosPeriodo,
+          -- Montos del período actual
+          (SELECT COALESCE(SUM(L.IMPLIQUIDA), 0)
+           FROM Liquidaciones L
+           WHERE L.SOCLIQUIDA = S.NUMSOCIO
+             AND YEAR(L.PERLIQUIDANRO) = ?
+             AND MONTH(L.PERLIQUIDANRO) = ?
+             AND L.ESTLIQUIDA IN ('AD', 'DE')) as montoTotalPeriodo,
+          (SELECT COALESCE(SUM(L.ABOLIQUIDA), 0)
+           FROM Liquidaciones L
+           WHERE L.SOCLIQUIDA = S.NUMSOCIO
+             AND YEAR(L.PERLIQUIDANRO) = ?
+             AND MONTH(L.PERLIQUIDANRO) = ?
+             AND L.ESTLIQUIDA IN ('AD', 'DE')) as montoCobradoPeriodo,
+          (SELECT COALESCE(SUM(L.IMPLIQUIDA - L.ABOLIQUIDA), 0)
+           FROM Liquidaciones L
+           WHERE L.SOCLIQUIDA = S.NUMSOCIO
+             AND YEAR(L.PERLIQUIDANRO) = ?
+             AND MONTH(L.PERLIQUIDANRO) = ?
+             AND L.ESTLIQUIDA IN ('AD', 'DE')) as deudaPendientePeriodo,
           -- Deuda total histórica (todos los períodos)
-          COALESCE(SUM(CASE 
-            WHEN L_hist.ESTLIQUIDA IN ('AD', 'DE') 
-            THEN (L_hist.IMPLIQUIDA - L_hist.ABOLIQUIDA) 
-            ELSE 0 
-          END), 0) as deudaTotalHistorica,
-          -- Total cupones con deuda histórica (todos los períodos)
-          COUNT(DISTINCT CASE 
-            WHEN L_hist.ESTLIQUIDA IN ('AD', 'DE') 
-            THEN L_hist.CUPLIQUIDA 
-          END) as cuponesTotalHistorica,
+          (SELECT COALESCE(SUM(L.IMPLIQUIDA - L.ABOLIQUIDA), 0)
+           FROM Liquidaciones L
+           WHERE L.SOCLIQUIDA = S.NUMSOCIO
+             AND L.ESTLIQUIDA IN ('AD', 'DE')) as deudaTotalHistorica,
+          -- Total cupones con deuda histórica
+          (SELECT COUNT(DISTINCT L.CUPLIQUIDA)
+           FROM Liquidaciones L
+           WHERE L.SOCLIQUIDA = S.NUMSOCIO
+             AND L.ESTLIQUIDA IN ('AD', 'DE')) as cuponesTotalHistorica,
           -- Cobrador (del registro más reciente del período)
-          COALESCE(C.NOMCOB, 'Sin asignar') as nombreCobrador,
-          L_per.COBLIQUIDA as numCobrador
+          (SELECT C.NOMCOB
+           FROM Liquidaciones L4
+           INNER JOIN Cobradores C ON L4.COBLIQUIDA = C.NUMCOB
+           WHERE L4.SOCLIQUIDA = S.NUMSOCIO
+           ORDER BY L4.PERLIQUIDANRO DESC
+           LIMIT 1) as nombreCobrador,
+          (SELECT L4.COBLIQUIDA
+           FROM Liquidaciones L4
+           WHERE L4.SOCLIQUIDA = S.NUMSOCIO
+           ORDER BY L4.PERLIQUIDANRO DESC
+           LIMIT 1) as numCobrador
         FROM Socios S
-        -- Liquidaciones del período actual (para datos del período)
-        INNER JOIN Liquidaciones L_per ON S.NUMSOCIO = L_per.SOCLIQUIDA
-          AND YEAR(L_per.PERLIQUIDANRO) = ? 
-          AND MONTH(L_per.PERLIQUIDANRO) = ?
-          AND L_per.ESTLIQUIDA IN ('AD', 'DE')
-        -- Liquidaciones históricas (para deuda total)
-        LEFT JOIN Liquidaciones L_hist ON S.NUMSOCIO = L_hist.SOCLIQUIDA
-          AND L_hist.ESTLIQUIDA IN ('AD', 'DE')
-        -- Cobrador
-        LEFT JOIN Cobradores C ON L_per.COBLIQUIDA = C.NUMCOB
-        GROUP BY S.NUMSOCIO, S.NOMSOCIO, C.NOMCOB, L_per.COBLIQUIDA
+        WHERE EXISTS (
+          SELECT 1 FROM Liquidaciones L
+          WHERE L.SOCLIQUIDA = S.NUMSOCIO
+            AND YEAR(L.PERLIQUIDANRO) = ?
+            AND MONTH(L.PERLIQUIDANRO) = ?
+            AND L.ESTLIQUIDA IN ('AD', 'DE')
+        )
         HAVING deudaTotalHistorica > 0
         ORDER BY deudaTotalHistorica DESC, deudaPendientePeriodo DESC
         LIMIT 100
       `;
-      params = [currentPeriod.getFullYear(), currentPeriod.getMonth() + 1];
+      // Parámetros repetidos para cada subquery (año, mes se usan 10 veces en el query)
+      const year = currentPeriod.getFullYear();
+      const month = currentPeriod.getMonth() + 1;
+      params = [
+        year, month,  // estado
+        year, month,  // cuponesVencidosPeriodo
+        year, month,  // montoTotalPeriodo
+        year, month,  // montoCobradoPeriodo
+        year, month,  // deudaPendientePeriodo
+        year, month   // WHERE EXISTS
+      ];
     }
 
     const results = (await executeQuery(query, params)) as any[];
