@@ -8,19 +8,25 @@ export async function GET(
 ) {
   try {
     const { numsocio } = await params;
+    const { searchParams } = new URL(request.url);
+    const soloDeuda = searchParams.get('soloDeuda') === 'true';
+
+    // Query principal: obtener liquidaciones
     const query = `
-      SELECT 
+      SELECT
         l.CUPLIQUIDA as cupliquida,
         l.FECLIQUIDA as fecliquida,
         l.IMPLIQUIDA as impliquida,
         l.ABOLIQUIDA as aboliquida,
         l.ESTLIQUIDA as estliquida,
-        c.NOMCOB as nomcob
+        c.NOMCOB as nomcob,
+        l.PERLIQUIDANRO as perliquidanro
       FROM Liquidaciones l
       LEFT JOIN Cobradores c ON l.COBLIQUIDA = c.NUMCOB
       WHERE l.SOCLIQUIDA = ?
+      ${soloDeuda ? "AND l.ESTLIQUIDA IN ('AD', 'DE')" : ''}
       ORDER BY l.FECLIQUIDA DESC
-      LIMIT 20
+      ${soloDeuda ? '' : 'LIMIT 50'}
     `;
 
     const results = (await executeQuery(query, [numsocio])) as any[];
