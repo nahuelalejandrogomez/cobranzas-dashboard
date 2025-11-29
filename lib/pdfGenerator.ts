@@ -1,194 +1,176 @@
-import PDFDocument from 'pdfkit';
+import React from 'react';
+import { renderToBuffer, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { CuponData } from './cuponData';
 
+const styles = StyleSheet.create({
+  page: {
+    padding: 40,
+    fontFamily: 'Helvetica',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    paddingBottom: 10,
+    borderBottom: '2px solid #009444',
+  },
+  title: {
+    fontSize: 20,
+    color: '#009444',
+    fontWeight: 'bold',
+  },
+  contactInfo: {
+    fontSize: 8,
+    textAlign: 'right',
+    lineHeight: 1.4,
+  },
+  contactRed: {
+    color: '#D9534F',
+    fontWeight: 'bold',
+  },
+  row: {
+    flexDirection: 'row',
+    marginBottom: 25,
+  },
+  field: {
+    flex: 1,
+  },
+  fieldFull: {
+    width: '100%',
+    marginBottom: 25,
+  },
+  label: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    marginBottom: 3,
+    letterSpacing: 0.5,
+  },
+  labelGreen: {
+    color: '#009444',
+  },
+  labelRed: {
+    color: '#D9534F',
+  },
+  value: {
+    fontSize: 11,
+    color: '#333',
+    paddingTop: 5,
+    paddingBottom: 5,
+    borderBottom: '1px solid #ccc',
+    minHeight: 24,
+  },
+  valueBold: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  footer: {
+    marginTop: 30,
+    paddingTop: 10,
+    borderTop: '1px solid #ccc',
+    fontSize: 8,
+    color: '#666',
+  },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 3,
+  },
+});
+
 /**
- * Genera un PDF del cupón de pago usando PDFKit
+ * Genera un PDF del cupón de pago usando @react-pdf/renderer
  * @param cuponData - Datos del cupón
  * @returns Buffer del PDF generado
  */
 export async function generatePDF(cuponData: CuponData): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    try {
-      const doc = new PDFDocument({
-        size: 'A4',
-        margins: { top: 50, bottom: 50, left: 50, right: 50 }
-      });
+  try {
+    const valorFormateado = new Intl.NumberFormat('es-AR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(cuponData.valorAbono);
 
-      const buffers: Buffer[] = [];
-      doc.on('data', buffers.push.bind(buffers));
-      doc.on('end', () => resolve(Buffer.concat(buffers)));
-      doc.on('error', reject);
+    const CuponDocument = (
+      <Document>
+        <Page size="A4" style={styles.page}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>PRESENCIA MÉDICA</Text>
+            <View>
+              <Text style={[styles.contactInfo, styles.contactRed]}>
+                BME. MITRE 542 (1744) MORENO. PCIA. DE BS. AS.
+              </Text>
+              <Text style={styles.contactInfo}>
+                ADMINISTRACIÓN (0237) 446 1381 / 488 3336 / 466 6630
+              </Text>
+              <Text style={[styles.contactInfo, styles.contactRed]}>
+                EMERGENCIA (0237) 463 3444 / 462 9555 / 463 2050
+              </Text>
+            </View>
+          </View>
 
-      // Colores
-      const verdePresencia = '#009444';
-      const rojoPresencia = '#D9534F';
+          {/* N° y Socio N° */}
+          <View style={styles.row}>
+            <View style={styles.field}>
+              <Text style={[styles.label, styles.labelGreen]}>N°</Text>
+              <Text style={styles.value}>{cuponData.numeroComprobante}</Text>
+            </View>
+            <View style={styles.field}>
+              <Text style={[styles.label, styles.labelRed]}>SOCIO N°</Text>
+              <Text style={styles.value}>{cuponData.socioNumero}</Text>
+            </View>
+          </View>
 
-      // Header con logo (texto como placeholder)
-      doc
-        .fontSize(20)
-        .fillColor(verdePresencia)
-        .text('PRESENCIA MÉDICA', 50, 50, { align: 'left' });
+          {/* Apellido */}
+          <View style={styles.fieldFull}>
+            <Text style={[styles.label, styles.labelRed]}>APELLIDO</Text>
+            <Text style={styles.value}>{cuponData.apellidoNombre}</Text>
+          </View>
 
-      // Información de contacto
-      doc
-        .fontSize(8)
-        .fillColor(rojoPresencia)
-        .text('BME. MITRE 542 (1744) MORENO. PCIA. DE BS. AS.', 350, 50, { align: 'right' })
-        .fillColor('#333')
-        .text('ADMINISTRACIÓN (0237) 446 1381 / 488 3336 / 466 6630', 350, 62, { align: 'right' })
-        .fillColor(rojoPresencia)
-        .text('EMERGENCIA (0237) 463 3444 / 462 9555 / 463 2050', 350, 74, { align: 'right' });
+          {/* Dirección */}
+          <View style={styles.fieldFull}>
+            <Text style={[styles.label, styles.labelRed]}>DIRECCIÓN</Text>
+            <Text style={styles.value}>{cuponData.direccion}</Text>
+          </View>
 
-      // Línea separadora
-      doc
-        .strokeColor(verdePresencia)
-        .lineWidth(2)
-        .moveTo(50, 100)
-        .lineTo(545, 100)
-        .stroke();
+          {/* Período y Zona */}
+          <View style={styles.row}>
+            <View style={styles.field}>
+              <Text style={[styles.label, styles.labelGreen]}>PERÍODO</Text>
+              <Text style={styles.value}>{cuponData.periodo}</Text>
+            </View>
+            <View style={styles.field}>
+              <Text style={[styles.label, styles.labelGreen]}>ZONA</Text>
+              <Text style={styles.value}>{cuponData.zona}</Text>
+            </View>
+          </View>
 
-      // Datos del cupón
-      let y = 130;
-      const lineHeight = 40;
+          {/* Valor Abono */}
+          <View style={styles.fieldFull}>
+            <Text style={[styles.label, styles.labelRed]}>VALOR ABONO</Text>
+            <Text style={styles.valueBold}>{valorFormateado}</Text>
+          </View>
 
-      // N° Comprobante y Socio N°
-      doc
-        .fontSize(9)
-        .fillColor(verdePresencia)
-        .text('N°', 50, y);
-      doc
-        .fontSize(11)
-        .fillColor('#333')
-        .text(cuponData.numeroComprobante, 50, y + 12);
-      doc
-        .strokeColor('#ccc')
-        .lineWidth(1)
-        .moveTo(50, y + 30)
-        .lineTo(270, y + 30)
-        .stroke();
+          {/* Footer */}
+          <View style={styles.footer}>
+            <View style={styles.footerRow}>
+              <Text>CUIT: 30-70847458-0</Text>
+              <Text>ING. BRUTOS: 30-70847458-0</Text>
+            </View>
+            <View style={styles.footerRow}>
+              <Text>IVA RESPONSABLE INSCRIPTO</Text>
+              <Text style={{ fontWeight: 'bold', color: '#333' }}>A CONSUMIDOR FINAL</Text>
+            </View>
+          </View>
+        </Page>
+      </Document>
+    );
 
-      doc
-        .fontSize(9)
-        .fillColor(rojoPresencia)
-        .text('SOCIO N°', 300, y);
-      doc
-        .fontSize(11)
-        .fillColor('#333')
-        .text(cuponData.socioNumero, 300, y + 12);
-      doc
-        .strokeColor('#ccc')
-        .moveTo(300, y + 30)
-        .lineTo(545, y + 30)
-        .stroke();
+    const buffer = await renderToBuffer(CuponDocument);
+    return buffer;
 
-      y += lineHeight;
-
-      // Apellido y Nombre
-      doc
-        .fontSize(9)
-        .fillColor(rojoPresencia)
-        .text('APELLIDO', 50, y);
-      doc
-        .fontSize(11)
-        .fillColor('#333')
-        .text(cuponData.apellidoNombre, 50, y + 12);
-      doc
-        .strokeColor('#ccc')
-        .moveTo(50, y + 30)
-        .lineTo(545, y + 30)
-        .stroke();
-
-      y += lineHeight;
-
-      // Dirección
-      doc
-        .fontSize(9)
-        .fillColor(rojoPresencia)
-        .text('DIRECCIÓN', 50, y);
-      doc
-        .fontSize(11)
-        .fillColor('#333')
-        .text(cuponData.direccion, 50, y + 12);
-      doc
-        .strokeColor('#ccc')
-        .moveTo(50, y + 30)
-        .lineTo(545, y + 30)
-        .stroke();
-
-      y += lineHeight;
-
-      // Período y Zona
-      doc
-        .fontSize(9)
-        .fillColor(verdePresencia)
-        .text('PERÍODO', 50, y);
-      doc
-        .fontSize(11)
-        .fillColor('#333')
-        .text(cuponData.periodo, 50, y + 12);
-      doc
-        .strokeColor('#ccc')
-        .moveTo(50, y + 30)
-        .lineTo(270, y + 30)
-        .stroke();
-
-      doc
-        .fontSize(9)
-        .fillColor(verdePresencia)
-        .text('ZONA', 300, y);
-      doc
-        .fontSize(11)
-        .fillColor('#333')
-        .text(cuponData.zona, 300, y + 12);
-      doc
-        .strokeColor('#ccc')
-        .moveTo(300, y + 30)
-        .lineTo(545, y + 30)
-        .stroke();
-
-      y += lineHeight;
-
-      // Valor Abono
-      const valorFormateado = new Intl.NumberFormat('es-AR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(cuponData.valorAbono);
-
-      doc
-        .fontSize(9)
-        .fillColor(rojoPresencia)
-        .text('VALOR ABONO', 50, y);
-      doc
-        .fontSize(13)
-        .font('Helvetica-Bold')
-        .fillColor('#333')
-        .text(valorFormateado, 50, y + 12);
-      doc
-        .strokeColor('#ccc')
-        .lineWidth(1)
-        .moveTo(50, y + 30)
-        .lineTo(270, y + 30)
-        .stroke();
-
-      // Footer
-      y += 60;
-      doc
-        .fontSize(8)
-        .font('Helvetica')
-        .fillColor('#666')
-        .text('CUIT: 30-70847458-0', 50, y)
-        .text('ING. BRUTOS: 30-70847458-0', 300, y)
-        .text('IVA RESPONSABLE INSCRIPTO', 50, y + 12)
-        .fontSize(8)
-        .font('Helvetica-Bold')
-        .fillColor('#333')
-        .text('A CONSUMIDOR FINAL', 300, y + 12, { align: 'right' });
-
-      doc.end();
-
-    } catch (error) {
-      console.error('[PDF Generator] Error:', error);
-      reject(new Error(`Error generando PDF: ${error}`));
-    }
-  });
+  } catch (error) {
+    console.error('[PDF Generator] Error:', error);
+    throw new Error(`Error generando PDF: ${error}`);
+  }
 }
