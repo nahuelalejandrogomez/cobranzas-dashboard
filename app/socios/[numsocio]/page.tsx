@@ -209,7 +209,7 @@ export default function SocioDetailPage() {
                               className="px-3 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors"
                               title="Descargar comprobante"
                             >
-                              PDF
+                              CUPÓN
                             </button>
                           );
                         }
