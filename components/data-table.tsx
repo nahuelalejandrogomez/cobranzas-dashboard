@@ -12,6 +12,7 @@ interface DataTableProps {
     key: string;
     label: string;
     format?: (value: any) => string;
+    render?: (row: any) => React.ReactNode;
   }>;
   data: Array<Record<string, any>>;
 }
@@ -37,7 +38,9 @@ export function DataTable({ columns, data }: DataTableProps) {
             <TableRow key={idx} className="border-t border-gray-200 hover:bg-gray-50">
               {columns.map((col) => (
                 <TableCell key={col.key} className="text-sm text-gray-700">
-                  {col.format
+                  {col.render
+                    ? col.render(row)
+                    : col.format
                     ? col.format(row[col.key])
                     : row[col.key] || '-'}
                 </TableCell>

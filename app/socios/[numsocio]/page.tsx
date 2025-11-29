@@ -48,6 +48,26 @@ export default function SocioDetailPage() {
     );
   }
 
+  const handleDownloadPDF = async (liquidacionId: number, numeroComprobante: string) => {
+    try {
+      const response = await fetch(`/api/cupon/${liquidacionId}?download=true`);
+      if (!response.ok) throw new Error('Error al generar el PDF');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cupon_${numeroComprobante}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error descargando PDF:', error);
+      alert('Error al descargar el comprobante. Por favor, intente nuevamente.');
+    }
+  };
+
   if (!socio) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -177,6 +197,25 @@ export default function SocioDetailPage() {
                       format: (val) => formatCurrency(Number(val)),
                     },
                     { key: 'nomcob', label: 'Cobrador' },
+                    {
+                      key: 'acciones',
+                      label: 'Acciones',
+                      render: (row) => {
+                        const liq = row as Liquidacion;
+                        if (liq.id) {
+                          return (
+                            <button
+                              onClick={() => handleDownloadPDF(liq.id!, liq.cupliquida)}
+                              className="px-3 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+                              title="Descargar comprobante"
+                            >
+                              PDF
+                            </button>
+                          );
+                        }
+                        return null;
+                      },
+                    },
                   ]}
                   data={liquidaciones}
                 />

@@ -42,6 +42,7 @@ export interface Socio {
 }
 
 export interface Liquidacion {
+  id?: number;                    // ID de la liquidación (para generar PDF)
   cupliquida: string;
   fecliquida: string;
   impliquida: number;

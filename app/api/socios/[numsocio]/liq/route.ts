@@ -14,6 +14,7 @@ export async function GET(
     // Query principal: obtener liquidaciones
     const query = `
       SELECT
+        l.id as id,
         l.CUPLIQUIDA as cupliquida,
         l.FECLIQUIDA as fecliquida,
         l.IMPLIQUIDA as impliquida,
@@ -31,6 +32,7 @@ export async function GET(
 
     const results = (await executeQuery(query, [numsocio])) as any[];
     const data: Liquidacion[] = results.map((row) => ({
+      id: Number(row.id) || undefined,
       cupliquida: row.cupliquida || '',
       fecliquida: row.fecliquida || '',
       impliquida: Number(row.impliquida) || 0,
