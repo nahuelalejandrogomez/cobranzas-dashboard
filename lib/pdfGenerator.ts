@@ -1,4 +1,5 @@
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 
 /**
  * Genera un PDF a partir de HTML usando Puppeteer
@@ -9,9 +10,11 @@ export async function generatePDF(html: string): Promise<Buffer> {
   let browser;
 
   try {
+    // Detectar si estamos en producción (Railway/serverless)
+    const isProduction = process.env.NODE_ENV === 'production';
+
     browser = await puppeteer.launch({
-      headless: true,
-      args: [
+      args: isProduction ? chromium.args : [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
@@ -21,11 +24,11 @@ export async function generatePDF(html: string): Promise<Buffer> {
         '--single-process',
         '--disable-gpu'
       ],
-      // Variables de entorno para Railway
-      env: {
-        ...process.env,
-        PUPPETEER_EXECUTABLE_PATH: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
-      }
+      defaultViewport: chromium.defaultViewport,
+      executablePath: isProduction
+        ? await chromium.executablePath()
+        : process.env.PUPPETEER_EXECUTABLE_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      headless: chromium.headless || true
     });
 
     const page = await browser.newPage();
