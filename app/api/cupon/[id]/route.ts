@@ -1,5 +1,4 @@
 import { getLiquidacionById } from '@/lib/cuponData';
-import { generateCuponHTML } from '@/lib/cuponTemplate';
 import { generatePDF } from '@/lib/pdfGenerator';
 
 /**
@@ -45,11 +44,8 @@ export async function GET(
       );
     }
 
-    // Generar HTML del cupón
-    const html = generateCuponHTML(cuponData);
-
-    // Generar PDF con Puppeteer
-    const pdfBuffer = await generatePDF(html);
+    // Generar PDF directamente con PDFKit
+    const pdfBuffer = await generatePDF(cuponData);
 
     console.log(`[API /cupon/${id}] PDF generado exitosamente (${pdfBuffer.length} bytes)`);
 
