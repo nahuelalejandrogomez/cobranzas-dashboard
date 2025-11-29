@@ -135,7 +135,8 @@ export function generateCuponHTML(data: CuponData): string {
 
     /* PIE */
     .footer {
-      margin-top: 30px;
+      margin-top: 20px;
+      margin-bottom: 10px;
       padding-top: 10px;
       border-top: 1px solid #ccc;
       font-size: 8px;
@@ -153,7 +154,8 @@ export function generateCuponHTML(data: CuponData): string {
       text-align: right;
       font-weight: bold;
       color: #333;
-      margin-top: 5px;
+      margin-top: 0px;
+      margin-bottom: 5px;
     }
 
     /* Responsive adjustments */
@@ -178,8 +180,8 @@ export function generateCuponHTML(data: CuponData): string {
       </div>
       <div class="info-section">
         <div class="direccion">BME. MITRE 542 (1744) MORENO. PCIA. DE BS. AS.</div>
-        <div class="contacto">ADMINISTRACIÓN (0237) 463 1381 / 488 3334 / 464 4230</div>
-        <div class="emergencia">EMERGENCIA (0237) 463 3444 / 462 9553 / 463 2050</div>
+        <div class="contacto">ADMINISTRACIÓN (0237) 446 1381 / 488 3336 / 466 6630</div>
+        <div class="emergencia">EMERGENCIA (0237) 463 3444 / 462 9555 / 463 2050</div>
       </div>
     </div>
 
@@ -231,8 +233,8 @@ export function generateCuponHTML(data: CuponData): string {
       </div>
       <div class="footer-row">
         <span>IVA RESPONSABLE INSCRIPTO</span>
+        <span class="consumidor-final" style="margin-top: 0;">A CONSUMIDOR FINAL</span>
       </div>
-      <div class="consumidor-final">A CONSUMIDOR FINAL</div>
     </div>
 
   </div>
