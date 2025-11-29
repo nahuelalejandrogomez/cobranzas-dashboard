@@ -16,7 +16,7 @@ export default function SocioDetailPage() {
   const [liquidaciones, setLiquidaciones] = useState<Liquidacion[]>([]);
   const [comentarios, setComentarios] = useState<Comentario[]>([]);
   const [loading, setLoading] = useState(true);
-  const [soloDeuda, setSoloDeuda] = useState(true); // Por defecto mostrar solo deudas
+  const [soloDeuda, setSoloDeuda] = useState(false); // Por defecto mostrar todas
 
   useEffect(() => {
     const fetchData = async () => {
@@ -152,7 +152,7 @@ export default function SocioDetailPage() {
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle className="text-gray-900">
-                {soloDeuda ? 'Liquidaciones con Deuda' : 'Últimas 50 Liquidaciones'}
+                {soloDeuda ? 'Liquidaciones con Deuda' : 'Todas las Liquidaciones'}
               </CardTitle>
               <button
                 onClick={() => setSoloDeuda(!soloDeuda)}

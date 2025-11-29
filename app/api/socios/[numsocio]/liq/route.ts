@@ -27,7 +27,6 @@ export async function GET(
       WHERE l.SOCLIQUIDA = ?
       ${soloDeuda ? "AND l.ESTLIQUIDA IN ('AD', 'DE')" : ''}
       ORDER BY l.FECLIQUIDA DESC
-      ${soloDeuda ? '' : 'LIMIT 50'}
     `;
 
     const results = (await executeQuery(query, [numsocio])) as any[];
