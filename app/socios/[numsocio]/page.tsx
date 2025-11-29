@@ -50,10 +50,21 @@ export default function SocioDetailPage() {
 
   const handleDownloadPDF = async (liquidacionId: number, numeroComprobante: string) => {
     try {
+      console.log('Solicitando PDF para liquidación ID:', liquidacionId);
       const response = await fetch(`/api/cupon/${liquidacionId}?download=true`);
-      if (!response.ok) throw new Error('Error al generar el PDF');
+
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        console.error('Error del servidor:', errorData);
+        throw new Error(errorData.error || `Error ${response.status}`);
+      }
 
       const blob = await response.blob();
+      console.log('Blob recibido, tamaño:', blob.size);
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -62,9 +73,11 @@ export default function SocioDetailPage() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+
+      console.log('PDF descargado exitosamente');
     } catch (error) {
       console.error('Error descargando PDF:', error);
-      alert('Error al descargar el comprobante. Por favor, intente nuevamente.');
+      alert(`Error al descargar el comprobante: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   };
 
