@@ -28,6 +28,7 @@ function formatArgentinaDateTime(date: Date): string {
 }
 
 interface LiquidacionPendiente {
+  liquidacion_id: number;
   mes: string;
   monto: number;
 }
@@ -153,6 +154,7 @@ export async function GET(request: Request) {
       const montoDeuda = Number(liq.deuda) || 0;
 
       deudor.liquidaciones.push({
+        liquidacion_id: liq.liquidacion_id,
         mes: liq.mes,
         monto: montoDeuda
       });
