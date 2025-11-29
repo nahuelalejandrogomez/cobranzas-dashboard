@@ -18,8 +18,14 @@ export async function generatePDF(html: string): Promise<Buffer> {
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
         '--no-zygote',
+        '--single-process',
         '--disable-gpu'
-      ]
+      ],
+      // Variables de entorno para Railway
+      env: {
+        ...process.env,
+        PUPPETEER_EXECUTABLE_PATH: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
+      }
     });
 
     const page = await browser.newPage();
