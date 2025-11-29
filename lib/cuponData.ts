@@ -23,7 +23,7 @@ export async function getLiquidacionById(id: number): Promise<CuponData | null> 
         S.NUMSOCIO as socioNumero,
         S.NOMSOCIO as apellidoNombre,
         S.DOMSOCIO as direccion,
-        DATE_FORMAT(L.PERLIQUIDA, '%Y-%m') as periodo,
+        DATE_FORMAT(L.PERLIQUIDANRO, '%m-%Y') as periodo,
         S.LOCSOCIO as zona,
         L.IMPLIQUIDA as valorAbono
       FROM Liquidaciones L
