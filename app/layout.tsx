@@ -10,8 +10,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Dashboard de Cobranzas',
-  description: 'Sistema de análisis y seguimiento de cobranzas',
+  title: 'Presencia Médica - Dashboard de Cobranzas',
+  description: 'Sistema de análisis y seguimiento de cobranzas - Presencia Médica',
   generator: 'v0.app',
   icons: {
     icon: [

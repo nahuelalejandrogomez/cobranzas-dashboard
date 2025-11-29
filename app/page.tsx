@@ -70,12 +70,12 @@ export default function Dashboard() {
       <main className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Header */}
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+          <div className="border-l-4 border-[#009444] pl-4">
+            <h1 className="text-3xl font-bold text-[#009444]">
               Dashboard de Cobranzas
             </h1>
             <p className="text-gray-600 mt-1">
-              Análisis y seguimiento de liquidaciones
+              Análisis y seguimiento de liquidaciones - Presencia Médica
             </p>
           </div>
 

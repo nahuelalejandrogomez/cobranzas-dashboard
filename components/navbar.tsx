@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 
 interface NavbarProps {
@@ -26,34 +27,41 @@ export function Navbar({ username }: NavbarProps) {
   };
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+    <nav className="bg-white border-b-2 border-[#009444] sticky top-0 z-50 shadow-sm">
+      <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link href="/" className="font-bold text-xl text-gray-900">
-            Cobranzas
+          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <Image
+              src="/logo/PresenciaMedicaLogo.jpg"
+              alt="Presencia Médica"
+              width={140}
+              height={50}
+              className="object-contain"
+              priority
+            />
           </Link>
           <div className="flex items-center gap-6">
             <Link
               href="/"
-              className="text-sm text-gray-600 hover:text-gray-900"
+              className="text-sm font-medium text-gray-700 hover:text-[#009444] transition-colors"
             >
               Dashboard
             </Link>
             <Link
               href="/socios"
-              className="text-sm text-gray-600 hover:text-gray-900"
+              className="text-sm font-medium text-gray-700 hover:text-[#009444] transition-colors"
             >
               Buscar Socios
             </Link>
             <Link
               href="/observabilidad"
-              className="text-sm text-gray-600 hover:text-gray-900"
+              className="text-sm font-medium text-gray-700 hover:text-[#009444] transition-colors"
             >
               Mensajes
             </Link>
             <Link
               href="/observabilidad-ia"
-              className="text-sm text-gray-600 hover:text-gray-900"
+              className="text-sm font-medium text-gray-700 hover:text-[#009444] transition-colors"
             >
               Uso IA
             </Link>
@@ -62,13 +70,13 @@ export function Navbar({ username }: NavbarProps) {
 
         <div className="flex items-center gap-4">
           {username && (
-            <span className="text-sm text-gray-600">Hola, {username}</span>
+            <span className="text-sm text-gray-600">Hola, <span className="font-semibold text-[#009444]">{username}</span></span>
           )}
           <Button
             onClick={handleLogout}
             disabled={loading}
             variant="outline"
-            className="border-gray-300 text-gray-700 hover:bg-gray-50"
+            className="border-[#009444] text-[#009444] hover:bg-[#009444] hover:text-white transition-colors"
           >
             {loading ? 'Cerrando sesión...' : 'Cerrar sesión'}
           </Button>
