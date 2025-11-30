@@ -54,10 +54,16 @@ export function Navbar({ username }: NavbarProps) {
               Buscar Socios
             </Link>
             <Link
+              href="/envio-mensajes"
+              className="text-sm font-medium text-gray-700 hover:text-[#009444] transition-colors"
+            >
+              Envío de Mensajes
+            </Link>
+            <Link
               href="/observabilidad"
               className="text-sm font-medium text-gray-700 hover:text-[#009444] transition-colors"
             >
-              Mensajes
+              Observabilidad
             </Link>
             <Link
               href="/observabilidad-ia"

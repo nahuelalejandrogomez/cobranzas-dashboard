@@ -2,16 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { redirect } from 'next/navigation';
-import { KPICard } from '@/components/kpi-card';
-import { KPIData } from '@/lib/types';
 import { Navbar } from '@/components/navbar';
-import { DeudasChart } from '@/components/deudas-chart';
-import DeudoresResumen from '../components/deudores-resumen';
-import { formatCurrency } from '@/lib/format-utils';
+import { EnviarCobranzaButton } from '@/components/enviar-cobranza-button';
+import { EnviarCuponButton } from '@/components/enviar-cupon-button';
 
-export default function Dashboard() {
-  const [kpi, setKpi] = useState<KPIData | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function EnvioMensajes() {
   const [session, setSession] = useState<{ username: string } | null>(null);
   const [checking, setChecking] = useState(true);
 
@@ -37,28 +32,10 @@ export default function Dashboard() {
     checkSession();
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const kpiRes = await fetch('/api/kpi/general');
-      if (kpiRes.ok) setKpi(await kpiRes.json());
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!checking) {
-      fetchData();
-    }
-  }, [checking]);
-
-  if (checking || loading) {
+  if (checking) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Cargando dashboard...</div>
+        <div className="text-gray-600">Cargando...</div>
       </div>
     );
   }
@@ -71,22 +48,20 @@ export default function Dashboard() {
           {/* Header */}
           <div className="border-l-4 border-[#009444] pl-4">
             <h1 className="text-3xl font-bold text-[#009444]">
-              Dashboard de Cobranzas
+              Envío de Mensajes WhatsApp
             </h1>
             <p className="text-gray-600 mt-1">
-              Análisis y seguimiento de liquidaciones - Presencia Médica
+              Gestión de envíos de cobranza y cupones - Presencia Médica
             </p>
           </div>
 
-          {/* 1. DETALLE DE DEUDORES - Primera sección */}
-          <DeudoresResumen />
+          {/* Envío de Cobranza Inicial */}
+          <EnviarCobranzaButton />
 
-          {/* 2. DISTRIBUCIÓN MENSUAL - Segunda sección */}
-          <DeudasChart />
+          {/* Envío de Cupones PDF */}
+          <EnviarCuponButton />
         </div>
       </main>
     </>
   );
 }
-
-
