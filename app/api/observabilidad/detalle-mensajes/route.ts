@@ -41,6 +41,7 @@ export async function GET(request: Request) {
     const whereClause = whereClauses.join(' AND ');
 
     // Query principal con LEFT JOIN para obtener info del socio (aunque no exista)
+    // Nota: LIMIT y OFFSET como valores literales, no parámetros preparados
     const query = `
       SELECT
         E.id,
@@ -57,7 +58,7 @@ export async function GET(request: Request) {
       LEFT JOIN Socios S ON L.SOCLIQUIDA = S.NUMSOCIO
       WHERE ${whereClause}
       ORDER BY E.fecha_evento DESC
-      LIMIT ? OFFSET ?
+      LIMIT ${limit} OFFSET ${offset}
     `;
 
     // Query para contar total (sin LIMIT)
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
     `;
 
     const [rows, countResult] = await Promise.all([
-      executeQuery(query, [...params, limit, offset]) as Promise<any[]>,
+      executeQuery(query, params) as Promise<any[]>,
       executeQuery(countQuery, params) as Promise<any[]>
     ]);
 
