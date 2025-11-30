@@ -9,6 +9,7 @@ import { DeudasChart } from '@/components/deudas-chart';
 import DeudoresResumen from '../components/deudores-resumen';
 import { MensajesMonitoreo } from '@/components/mensajes-monitoreo';
 import { formatCurrency } from '@/lib/format-utils';
+import { EnviarCobranzaButton } from '@/components/enviar-cobranza-button';
 
 export default function Dashboard() {
   const [kpi, setKpi] = useState<KPIData | null>(null);
@@ -87,6 +88,9 @@ export default function Dashboard() {
 
           {/* 3. MONITOREO DE MENSAJES - Tercera sección */}
           <MensajesMonitoreo />
+
+          {/* 4. ENVÍO DE COBRANZA INICIAL - Cuarta sección */}
+          <EnviarCobranzaButton />
         </div>
       </main>
     </>
