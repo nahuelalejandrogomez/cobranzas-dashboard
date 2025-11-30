@@ -65,12 +65,6 @@ export function Navbar({ username }: NavbarProps) {
             >
               Observabilidad
             </Link>
-            <Link
-              href="/observabilidad-ia"
-              className="text-sm font-medium text-gray-700 hover:text-[#009444] transition-colors"
-            >
-              Uso IA
-            </Link>
           </div>
         </div>
 
