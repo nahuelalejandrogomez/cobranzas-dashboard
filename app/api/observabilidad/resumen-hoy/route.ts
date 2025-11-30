@@ -8,20 +8,21 @@ function getArgentinaDate(): string {
   return argentinaTime.toISOString().slice(0, 10);
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const hoyArgentina = getArgentinaDate();
+    const { searchParams } = new URL(request.url);
+    const fecha = searchParams.get('fecha') || getArgentinaDate();
 
     const query = `
       SELECT
         COUNT(*) as total,
-        SUM(CASE WHEN estado_envio = 'enviado' THEN 1 ELSE 0 END) as enviados,
-        SUM(CASE WHEN estado_envio = 'error' THEN 1 ELSE 0 END) as errores
-      FROM MensajesEnviados
-      WHERE DATE(fecha_envio) = ?
+        SUM(CASE WHEN resultado_envio = 'OK' THEN 1 ELSE 0 END) as enviados,
+        SUM(CASE WHEN resultado_envio = 'ERROR' THEN 1 ELSE 0 END) as errores
+      FROM EstadoEnvioLiquidaciones
+      WHERE DATE(fecha_evento) = ?
     `;
 
-    const [result] = (await executeQuery(query, [hoyArgentina])) as any[];
+    const [result] = (await executeQuery(query, [fecha])) as any[];
 
     const total = Number(result?.total) || 0;
     const enviados = Number(result?.enviados) || 0;
@@ -29,7 +30,7 @@ export async function GET() {
     const porcentajeExito = total > 0 ? Math.round((enviados / total) * 100) : 0;
 
     return Response.json({
-      fecha: hoyArgentina,
+      fecha,
       total,
       enviados,
       errores,

@@ -8,6 +8,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 // Intervalo de auto-refresh: 45 minutos
 const REFRESH_INTERVAL = 45 * 60 * 1000;
 
+// Obtener fecha de hoy en Argentina (UTC-3)
+function getArgentinaDate(daysOffset: number = 0): string {
+  const now = new Date();
+  const argentinaOffset = -3 * 60;
+  const argentinaTime = new Date(now.getTime() + (argentinaOffset - now.getTimezoneOffset()) * 60000);
+  argentinaTime.setDate(argentinaTime.getDate() + daysOffset);
+  return argentinaTime.toISOString().slice(0, 10);
+}
+
 // ===== INTERFACES =====
 interface ResumenHoy {
   fecha: string;
@@ -24,12 +33,21 @@ interface DatosDia {
   total: number;
 }
 
-interface ErrorMensaje {
+interface MensajeDetalle {
+  id: number;
+  liquidacion_id: number;
   socio_id: string;
-  telefono: string;
-  errormessage: string;
-  fecha_envio: string;
-  mensaje: string;
+  nombre_socio: string;
+  telefono_socio: string;
+  estado: string;
+  resultado_envio: string;
+  fecha_evento: string;
+  mensaje_error: string;
+}
+
+interface FiltrosDisponibles {
+  estados: string[];
+  resultados: string[];
 }
 
 export default function ObservabilidadPage() {
@@ -41,7 +59,22 @@ export default function ObservabilidadPage() {
   // Estado datos
   const [resumenHoy, setResumenHoy] = useState<ResumenHoy | null>(null);
   const [ultimos7Dias, setUltimos7Dias] = useState<DatosDia[]>([]);
-  const [errores, setErrores] = useState<ErrorMensaje[]>([]);
+  const [mensajes, setMensajes] = useState<MensajeDetalle[]>([]);
+  const [filtrosDisponibles, setFiltrosDisponibles] = useState<FiltrosDisponibles>({
+    estados: [],
+    resultados: []
+  });
+
+  // Filtros
+  const [fechaDesde, setFechaDesde] = useState(getArgentinaDate(-7));
+  const [fechaHasta, setFechaHasta] = useState(getArgentinaDate());
+  const [estadoFiltro, setEstadoFiltro] = useState<string>('TODOS');
+  const [resultadoFiltro, setResultadoFiltro] = useState<string>('TODOS');
+
+  // Paginación
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -63,17 +96,44 @@ export default function ObservabilidadPage() {
     checkSession();
   }, []);
 
+  // Cargar filtros disponibles
+  useEffect(() => {
+    const fetchFiltros = async () => {
+      try {
+        const res = await fetch('/api/observabilidad/filtros-disponibles');
+        if (res.ok) {
+          const data = await res.json();
+          setFiltrosDisponibles(data);
+        }
+      } catch (error) {
+        console.error('Error fetching filtros:', error);
+      }
+    };
+    if (!checking) fetchFiltros();
+  }, [checking]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [resumenRes, diasRes, erroresRes] = await Promise.all([
-        fetch('/api/observabilidad/resumen-hoy'),
-        fetch('/api/observabilidad/ultimos-7-dias'),
-        fetch('/api/observabilidad/errores')
-      ]);
+      // Resumen del día seleccionado (fechaHasta)
+      const resumenRes = await fetch(`/api/observabilidad/resumen-hoy?fecha=${fechaHasta}`);
       if (resumenRes.ok) setResumenHoy(await resumenRes.json());
+
+      // Últimos 7 días o rango seleccionado
+      const diasRes = await fetch(`/api/observabilidad/ultimos-7-dias?desde=${fechaDesde}&hasta=${fechaHasta}`);
       if (diasRes.ok) setUltimos7Dias(await diasRes.json());
-      if (erroresRes.ok) setErrores(await erroresRes.json());
+
+      // Detalle de mensajes
+      const detalleRes = await fetch(
+        `/api/observabilidad/detalle-mensajes?desde=${fechaDesde}&hasta=${fechaHasta}&estado=${estadoFiltro}&resultado=${resultadoFiltro}&page=${page}&limit=50`
+      );
+      if (detalleRes.ok) {
+        const data = await detalleRes.json();
+        setMensajes(data.mensajes);
+        setTotalPages(data.pagination.totalPages);
+        setTotal(data.pagination.total);
+      }
+
       setLastUpdate(new Date());
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -88,7 +148,18 @@ export default function ObservabilidadPage() {
       const interval = setInterval(fetchData, REFRESH_INTERVAL);
       return () => clearInterval(interval);
     }
-  }, [checking]);
+  }, [checking, fechaDesde, fechaHasta, estadoFiltro, resultadoFiltro, page]);
+
+  const handleCardClick = (filtro: string) => {
+    setResultadoFiltro(filtro);
+    setPage(1);
+  };
+
+  const aplicarFiltroRapido = (dias: number) => {
+    setFechaDesde(getArgentinaDate(-dias));
+    setFechaHasta(getArgentinaDate());
+    setPage(1);
+  };
 
   if (checking) {
     return (
@@ -109,7 +180,7 @@ export default function ObservabilidadPage() {
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Observabilidad - Mensajes</h1>
-              <p className="text-gray-600 mt-1">Monitoreo de mensajes enviados por n8n</p>
+              <p className="text-gray-600 mt-1">Monitoreo de envíos de WhatsApp</p>
             </div>
             {lastUpdate && (
               <div className="text-xs text-gray-500 text-right">
@@ -120,6 +191,58 @@ export default function ObservabilidadPage() {
             )}
           </div>
 
+          {/* Filtros de Fecha */}
+          <Card className="bg-white border border-gray-200">
+            <CardContent className="pt-6">
+              <div className="flex flex-wrap gap-4 items-end">
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Desde</label>
+                  <input
+                    type="date"
+                    value={fechaDesde}
+                    onChange={(e) => {
+                      setFechaDesde(e.target.value);
+                      setPage(1);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Hasta</label>
+                  <input
+                    type="date"
+                    value={fechaHasta}
+                    onChange={(e) => {
+                      setFechaHasta(e.target.value);
+                      setPage(1);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => aplicarFiltroRapido(0)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                  >
+                    Hoy
+                  </button>
+                  <button
+                    onClick={() => aplicarFiltroRapido(7)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                  >
+                    Últimos 7 días
+                  </button>
+                  <button
+                    onClick={() => aplicarFiltroRapido(30)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                  >
+                    Últimos 30 días
+                  </button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {loading ? (
             <div className="text-gray-500">Cargando datos...</div>
           ) : (
@@ -128,7 +251,10 @@ export default function ObservabilidadPage() {
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Resumen del Día</h2>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <Card className="bg-white border border-gray-200">
+                  <Card
+                    className="bg-white border border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
+                    onClick={() => handleCardClick('TODOS')}
+                  >
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-medium text-gray-600">Total Hoy</CardTitle>
                     </CardHeader>
@@ -137,7 +263,10 @@ export default function ObservabilidadPage() {
                       <p className="text-xs text-gray-500 mt-1">mensajes procesados</p>
                     </CardContent>
                   </Card>
-                  <Card className="bg-white border border-gray-200">
+                  <Card
+                    className="bg-white border border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
+                    onClick={() => handleCardClick('OK')}
+                  >
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-medium text-gray-600">Enviados OK</CardTitle>
                     </CardHeader>
@@ -146,7 +275,10 @@ export default function ObservabilidadPage() {
                       <p className="text-xs text-gray-500 mt-1">sin errores</p>
                     </CardContent>
                   </Card>
-                  <Card className="bg-white border border-gray-200">
+                  <Card
+                    className="bg-white border border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
+                    onClick={() => handleCardClick('ERROR')}
+                  >
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-medium text-gray-600">Errores</CardTitle>
                     </CardHeader>
@@ -169,13 +301,13 @@ export default function ObservabilidadPage() {
                 </div>
               </div>
 
-              {/* Últimos 7 Días */}
+              {/* Evolución por Día */}
               <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Últimos 7 Días</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Evolución por Día</h2>
                 <Card className="bg-white border border-gray-200">
                   <CardContent className="pt-6">
                     {ultimos7Dias.length === 0 ? (
-                      <div className="text-gray-500 text-center py-8">No hay datos en los últimos 7 días</div>
+                      <div className="text-gray-500 text-center py-8">No hay datos en el rango seleccionado</div>
                     ) : (
                       <div className="space-y-3">
                         <div className="flex gap-4 text-xs mb-4">
@@ -202,38 +334,138 @@ export default function ObservabilidadPage() {
                 </Card>
               </div>
 
-              {/* Errores */}
+              {/* Detalle de Mensajes */}
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  Últimos Errores {errores.length > 0 && <span className="text-sm font-normal text-gray-500">({errores.length})</span>}
+                  Detalle de Mensajes {total > 0 && <span className="text-sm font-normal text-gray-500">({total} registros)</span>}
                 </h2>
+
+                {/* Filtros adicionales */}
+                <div className="mb-4 flex gap-4 flex-wrap">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Envío</label>
+                    <select
+                      value={estadoFiltro}
+                      onChange={(e) => {
+                        setEstadoFiltro(e.target.value);
+                        setPage(1);
+                      }}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="TODOS">Todos</option>
+                      {filtrosDisponibles.estados.map(estado => (
+                        <option key={estado} value={estado}>{estado}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Resultado</label>
+                    <select
+                      value={resultadoFiltro}
+                      onChange={(e) => {
+                        setResultadoFiltro(e.target.value);
+                        setPage(1);
+                      }}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="TODOS">Todos</option>
+                      {filtrosDisponibles.resultados.map(resultado => (
+                        <option key={resultado} value={resultado}>{resultado}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <Card className="bg-white border border-gray-200">
                   <CardContent className="pt-6">
-                    {errores.length === 0 ? (
-                      <div className="text-gray-500 text-center py-8">No hay errores registrados</div>
+                    {mensajes.length === 0 ? (
+                      <div className="text-gray-500 text-center py-8">No hay mensajes con los filtros seleccionados</div>
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-gray-200">
-                              <th className="text-left py-3 px-2 font-medium text-gray-600">Socio</th>
-                              <th className="text-left py-3 px-2 font-medium text-gray-600">Teléfono</th>
-                              <th className="text-left py-3 px-2 font-medium text-gray-600">Error</th>
-                              <th className="text-left py-3 px-2 font-medium text-gray-600">Fecha</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {errores.map((error, idx) => (
-                              <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
-                                <td className="py-3 px-2"><span className="font-mono text-blue-600">{error.socio_id}</span></td>
-                                <td className="py-3 px-2 text-gray-600">{error.telefono}</td>
-                                <td className="py-3 px-2"><span className="text-red-600 bg-red-50 px-2 py-1 rounded text-xs">{error.errormessage}</span></td>
-                                <td className="py-3 px-2 text-gray-500 text-xs">{new Date(error.fecha_envio).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
+                      <>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-gray-200">
+                                <th className="text-left py-3 px-2 font-medium text-gray-600">Fecha/Hora</th>
+                                <th className="text-left py-3 px-2 font-medium text-gray-600">Tipo</th>
+                                <th className="text-left py-3 px-2 font-medium text-gray-600">Resultado</th>
+                                <th className="text-left py-3 px-2 font-medium text-gray-600">Liquidación</th>
+                                <th className="text-left py-3 px-2 font-medium text-gray-600">Socio</th>
+                                <th className="text-left py-3 px-2 font-medium text-gray-600">Teléfono</th>
+                                <th className="text-left py-3 px-2 font-medium text-gray-600">Mensaje/Error</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                            </thead>
+                            <tbody>
+                              {mensajes.map((msg) => (
+                                <tr key={msg.id} className="border-b border-gray-100 hover:bg-gray-50">
+                                  <td className="py-3 px-2 text-gray-500 text-xs">
+                                    {new Date(msg.fecha_evento).toLocaleString('es-AR', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </td>
+                                  <td className="py-3 px-2">
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                                      {msg.estado}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-2">
+                                    <span className={`px-2 py-1 rounded text-xs ${
+                                      msg.resultado_envio === 'OK'
+                                        ? 'bg-green-100 text-green-800'
+                                        : msg.resultado_envio === 'ERROR'
+                                        ? 'bg-red-100 text-red-800'
+                                        : 'bg-yellow-100 text-yellow-800'
+                                    }`}>
+                                      {msg.resultado_envio}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-2">
+                                    <span className="font-mono text-gray-600 text-xs">{msg.liquidacion_id}</span>
+                                  </td>
+                                  <td className="py-3 px-2">
+                                    <div className="flex flex-col">
+                                      <span className="font-mono text-blue-600 text-xs">{msg.socio_id}</span>
+                                      <span className="text-gray-600 text-xs">{msg.nombre_socio}</span>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-2 text-gray-600 text-xs">{msg.telefono_socio}</td>
+                                  <td className="py-3 px-2 text-gray-500 text-xs max-w-xs truncate" title={msg.mensaje_error}>
+                                    {msg.mensaje_error || '-'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Paginación */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+                            <div className="text-sm text-gray-600">
+                              Página {page} de {totalPages} ({total} registros)
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setPage(Math.max(1, page - 1))}
+                                disabled={page === 1}
+                                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                              >
+                                Anterior
+                              </button>
+                              <button
+                                onClick={() => setPage(Math.min(totalPages, page + 1))}
+                                disabled={page === totalPages}
+                                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                              >
+                                Siguiente
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
                   </CardContent>
                 </Card>
