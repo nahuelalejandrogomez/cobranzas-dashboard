@@ -19,7 +19,7 @@ export function EnviarCobranzaButton() {
     setResultado(null);
 
     try {
-      const response = await fetch('https://nahuelalejandrogomez.app.n8n.cloud/webhook/enviar-cobranza', {
+      const response = await fetch('/api/enviar-cobranza', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
