@@ -4,14 +4,15 @@ export async function GET() {
   try {
     const query = `
       SELECT
-        DATE(fecha_envio) AS dia,
+        DATE(fecha_evento) AS dia,
         COUNT(*) AS total,
         SUM(resultado_envio = 'OK') AS ok,
-        SUM(resultado_envio = 'ERROR') AS error
+        SUM(resultado_envio = 'ERROR') AS error,
+        SUM(resultado_envio = 'Planificado') AS planificado
       FROM EstadoEnvioLiquidaciones
-      WHERE MONTH(fecha_envio) = MONTH(CURDATE())
-        AND YEAR(fecha_envio) = YEAR(CURDATE())
-      GROUP BY DATE(fecha_envio)
+      WHERE MONTH(fecha_evento) = MONTH(CURDATE())
+        AND YEAR(fecha_evento) = YEAR(CURDATE())
+      GROUP BY DATE(fecha_evento)
       ORDER BY dia ASC
     `;
 
@@ -21,7 +22,8 @@ export async function GET() {
       dia: row.dia,
       total: Number(row.total) || 0,
       ok: Number(row.ok) || 0,
-      error: Number(row.error) || 0
+      error: Number(row.error) || 0,
+      planificado: Number(row.planificado) || 0
     }));
 
     return Response.json(data);

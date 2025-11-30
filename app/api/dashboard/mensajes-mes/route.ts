@@ -6,10 +6,11 @@ export async function GET() {
       SELECT
         COUNT(*) AS total_mensajes,
         SUM(resultado_envio = 'OK') AS total_ok,
-        SUM(resultado_envio = 'ERROR') AS total_error
+        SUM(resultado_envio = 'ERROR') AS total_error,
+        SUM(resultado_envio = 'Planificado') AS total_planificado
       FROM EstadoEnvioLiquidaciones
-      WHERE MONTH(fecha_envio) = MONTH(CURDATE())
-        AND YEAR(fecha_envio) = YEAR(CURDATE())
+      WHERE MONTH(fecha_evento) = MONTH(CURDATE())
+        AND YEAR(fecha_evento) = YEAR(CURDATE())
     `;
 
     const [result] = (await executeQuery(query)) as any[];
@@ -17,7 +18,8 @@ export async function GET() {
     return Response.json({
       total_mensajes_del_mes: Number(result?.total_mensajes) || 0,
       total_ok: Number(result?.total_ok) || 0,
-      total_error: Number(result?.total_error) || 0
+      total_error: Number(result?.total_error) || 0,
+      total_planificado: Number(result?.total_planificado) || 0
     });
 
   } catch (error) {
