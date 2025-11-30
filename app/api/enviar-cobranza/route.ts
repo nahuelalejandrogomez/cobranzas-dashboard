@@ -15,6 +15,7 @@
  */
 
 export async function POST(request: Request) {
+  console.log('[API enviar-cobranza] Endpoint proxy activo - recibiendo request');
   try {
     console.log('[API enviar-cobranza] Iniciando llamada a n8n webhook...');
 
