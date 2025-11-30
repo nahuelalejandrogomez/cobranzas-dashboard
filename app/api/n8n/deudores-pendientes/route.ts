@@ -30,6 +30,7 @@ function formatArgentinaDateTime(date: Date): string {
 interface LiquidacionPendiente {
   liquidacion_id: number;
   mes: string;
+  perliquidanro: number;
   monto: number;
 }
 
@@ -71,6 +72,7 @@ export async function GET(request: Request) {
         S.NOMSOCIO as nombre,
         S.TELSOCIO as telefono_real,
         DATE_FORMAT(L.PERLIQUIDANRO, '%Y-%m') as mes,
+        L.PERLIQUIDANRO as perliquidanro,
         (L.IMPLIQUIDA - COALESCE(L.ABOLIQUIDA, 0)) as deuda
       FROM Liquidaciones L
       INNER JOIN Socios S ON L.SOCLIQUIDA = S.NUMSOCIO
@@ -156,6 +158,7 @@ export async function GET(request: Request) {
       deudor.liquidaciones.push({
         liquidacion_id: liq.liquidacion_id,
         mes: liq.mes,
+        perliquidanro: Number(liq.perliquidanro) || 0,
         monto: montoDeuda
       });
       deudor.total_adeudado += montoDeuda;
