@@ -5,9 +5,9 @@ export async function GET() {
     const query = `
       SELECT
         COUNT(*) AS total_mensajes,
-        SUM(estado_envio = 'enviado') AS total_ok,
-        SUM(estado_envio = 'error') AS total_error
-      FROM MensajesEnviados
+        SUM(resultado_envio = 'OK') AS total_ok,
+        SUM(resultado_envio = 'ERROR') AS total_error
+      FROM EstadoEnvioLiquidaciones
       WHERE MONTH(fecha_envio) = MONTH(CURDATE())
         AND YEAR(fecha_envio) = YEAR(CURDATE())
     `;

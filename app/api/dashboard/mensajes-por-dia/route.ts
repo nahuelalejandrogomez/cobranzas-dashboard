@@ -6,9 +6,9 @@ export async function GET() {
       SELECT
         DATE(fecha_envio) AS dia,
         COUNT(*) AS total,
-        SUM(estado_envio = 'enviado') AS ok,
-        SUM(estado_envio = 'error') AS error
-      FROM MensajesEnviados
+        SUM(resultado_envio = 'OK') AS ok,
+        SUM(resultado_envio = 'ERROR') AS error
+      FROM EstadoEnvioLiquidaciones
       WHERE MONTH(fecha_envio) = MONTH(CURDATE())
         AND YEAR(fecha_envio) = YEAR(CURDATE())
       GROUP BY DATE(fecha_envio)
