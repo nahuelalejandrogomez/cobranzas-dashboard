@@ -10,6 +10,7 @@ import DeudoresResumen from '../components/deudores-resumen';
 import { MensajesMonitoreo } from '@/components/mensajes-monitoreo';
 import { formatCurrency } from '@/lib/format-utils';
 import { EnviarCobranzaButton } from '@/components/enviar-cobranza-button';
+import { EnviarCuponButton } from '@/components/enviar-cupon-button';
 
 export default function Dashboard() {
   const [kpi, setKpi] = useState<KPIData | null>(null);
@@ -91,6 +92,9 @@ export default function Dashboard() {
 
           {/* 4. ENVÍO DE COBRANZA INICIAL - Cuarta sección */}
           <EnviarCobranzaButton />
+
+          {/* 5. ENVÍO DE CUPONES PDF - Quinta sección */}
+          <EnviarCuponButton />
         </div>
       </main>
     </>
