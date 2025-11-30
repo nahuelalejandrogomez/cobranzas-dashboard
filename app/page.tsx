@@ -7,7 +7,6 @@ import { KPIData } from '@/lib/types';
 import { Navbar } from '@/components/navbar';
 import { DeudasChart } from '@/components/deudas-chart';
 import DeudoresResumen from '../components/deudores-resumen';
-import { MensajesMonitoreo } from '@/components/mensajes-monitoreo';
 import { formatCurrency } from '@/lib/format-utils';
 import { EnviarCobranzaButton } from '@/components/enviar-cobranza-button';
 import { EnviarCuponButton } from '@/components/enviar-cupon-button';
@@ -87,13 +86,10 @@ export default function Dashboard() {
           {/* 2. DISTRIBUCIÓN MENSUAL - Segunda sección */}
           <DeudasChart />
 
-          {/* 3. MONITOREO DE MENSAJES - Tercera sección */}
-          <MensajesMonitoreo />
-
-          {/* 4. ENVÍO DE COBRANZA INICIAL - Cuarta sección */}
+          {/* 3. ENVÍO DE COBRANZA INICIAL - Tercera sección */}
           <EnviarCobranzaButton />
 
-          {/* 5. ENVÍO DE CUPONES PDF - Quinta sección */}
+          {/* 4. ENVÍO DE CUPONES PDF - Cuarta sección */}
           <EnviarCuponButton />
         </div>
       </main>
