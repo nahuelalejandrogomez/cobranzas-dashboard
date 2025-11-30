@@ -72,7 +72,7 @@ export async function GET(request: Request) {
         S.NOMSOCIO as nombre,
         S.TELSOCIO as telefono_real,
         DATE_FORMAT(L.PERLIQUIDANRO, '%Y-%m') as mes,
-        L.PERLIQUIDANRO as perliquidanro,
+        (YEAR(L.PERLIQUIDANRO) * 100 + MONTH(L.PERLIQUIDANRO)) as perliquidanro,
         (L.IMPLIQUIDA - COALESCE(L.ABOLIQUIDA, 0)) as deuda
       FROM Liquidaciones L
       INNER JOIN Socios S ON L.SOCLIQUIDA = S.NUMSOCIO
