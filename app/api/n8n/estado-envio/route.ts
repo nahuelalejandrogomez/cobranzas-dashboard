@@ -1,5 +1,13 @@
 import { executeQuery } from '@/lib/db';
 
+// Obtener fecha/hora en Argentina (UTC-3)
+function getArgentinaDateTime(): string {
+  const now = new Date();
+  const argentinaOffset = -3 * 60; // UTC-3 en minutos
+  const argentinaTime = new Date(now.getTime() + (argentinaOffset - now.getTimezoneOffset()) * 60000);
+  return argentinaTime.toISOString().slice(0, 19).replace('T', ' ');
+}
+
 /**
  * API para n8n - Registrar Estado de Envío de Liquidación
  *
@@ -105,10 +113,12 @@ export async function POST(request: Request) {
     }
 
     // Insertar el registro en EstadoEnvioLiquidaciones
+    const fechaArgentina = getArgentinaDateTime();
+
     const insertQuery = `
       INSERT INTO EstadoEnvioLiquidaciones
       (liquidacion_id, estado, resultado_envio, metadata, fecha_evento)
-      VALUES (?, ?, ?, ?, NOW())
+      VALUES (?, ?, ?, ?, ?)
     `;
 
     const metadataJson = body.metadata ? JSON.stringify(body.metadata) : null;
@@ -117,7 +127,8 @@ export async function POST(request: Request) {
       body.liquidacion_id,
       body.estado,
       body.resultado_envio,
-      metadataJson
+      metadataJson,
+      fechaArgentina
     ])) as any;
 
     console.log(`[API n8n/estado-envio] Registro creado:`, {
