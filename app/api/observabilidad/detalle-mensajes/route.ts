@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
     const whereClause = whereClauses.join(' AND ');
 
-    // Query principal con JOIN para obtener info del socio
+    // Query principal con LEFT JOIN para obtener info del socio (aunque no exista)
     const query = `
       SELECT
         E.id,
@@ -53,8 +53,8 @@ export async function GET(request: Request) {
         S.NOMSOCIO as nombre_socio,
         S.TELSOCIO as telefono_socio
       FROM EstadoEnvioLiquidaciones E
-      INNER JOIN Liquidaciones L ON E.liquidacion_id = L.id
-      INNER JOIN Socios S ON L.SOCLIQUIDA = S.NUMSOCIO
+      LEFT JOIN Liquidaciones L ON E.liquidacion_id = L.id
+      LEFT JOIN Socios S ON L.SOCLIQUIDA = S.NUMSOCIO
       WHERE ${whereClause}
       ORDER BY E.fecha_evento DESC
       LIMIT ? OFFSET ?
@@ -64,8 +64,8 @@ export async function GET(request: Request) {
     const countQuery = `
       SELECT COUNT(*) as total
       FROM EstadoEnvioLiquidaciones E
-      INNER JOIN Liquidaciones L ON E.liquidacion_id = L.id
-      INNER JOIN Socios S ON L.SOCLIQUIDA = S.NUMSOCIO
+      LEFT JOIN Liquidaciones L ON E.liquidacion_id = L.id
+      LEFT JOIN Socios S ON L.SOCLIQUIDA = S.NUMSOCIO
       WHERE ${whereClause}
     `;
 
@@ -93,8 +93,8 @@ export async function GET(request: Request) {
 
       return {
         id: row.id,
-        liquidacion_id: row.liquidacion_id,
-        socio_id: row.socio_id,
+        liquidacion_id: row.liquidacion_id || 0,
+        socio_id: row.socio_id || 'N/A',
         nombre_socio: row.nombre_socio || 'Sin nombre',
         telefono_socio: row.telefono_socio || 'N/A',
         estado: row.estado,
