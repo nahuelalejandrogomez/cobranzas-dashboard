@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { redirect } from 'next/navigation';
 import { Navbar } from '@/components/navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 
 // Intervalo de auto-refresh: 45 minutos
 const REFRESH_INTERVAL = 45 * 60 * 1000;
@@ -26,11 +27,20 @@ interface ResumenHoy {
   porcentajeExito: number;
 }
 
+interface Socio {
+  socio_id: string;
+  nombre: string;
+}
+
 interface DatosDia {
   fecha: string;
   enviados: number;
   errores: number;
   total: number;
+  socios: {
+    ok: Socio[];
+    error: Socio[];
+  };
 }
 
 interface MensajeDetalle {
@@ -75,6 +85,15 @@ export default function ObservabilidadPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+
+  // Ordenamiento
+  type SortField = 'fecha_evento' | 'estado' | 'resultado_envio' | 'liquidacion_id' | 'nombre_socio' | 'telefono_socio';
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Tooltip del gráfico
+  const [tooltipData, setTooltipData] = useState<{ socios: Socio[]; tipo: 'ok' | 'error'; fecha: string; count: number } | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -149,6 +168,42 @@ export default function ObservabilidadPage() {
       return () => clearInterval(interval);
     }
   }, [checking, fechaDesde, fechaHasta, estadoFiltro, resultadoFiltro, page]);
+
+  // Función para manejar el ordenamiento
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
+
+  // Mensajes ordenados
+  const mensajesOrdenados = [...mensajes].sort((a, b) => {
+    if (!sortField) return 0;
+
+    let aVal: any = a[sortField];
+    let bVal: any = b[sortField];
+
+    // Manejo especial para fechas
+    if (sortField === 'fecha_evento') {
+      aVal = new Date(aVal).getTime();
+      bVal = new Date(bVal).getTime();
+    }
+
+    // Manejo para strings
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      aVal = aVal.toLowerCase();
+      bVal = bVal.toLowerCase();
+    }
+
+    if (sortOrder === 'asc') {
+      return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+    } else {
+      return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+    }
+  });
 
   const handleCardClick = (filtro: string) => {
     setResultadoFiltro(filtro);
@@ -318,11 +373,45 @@ export default function ObservabilidadPage() {
                           const fecha = new Date(dia.fecha);
                           const fechaStr = fecha.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short' });
                           return (
-                            <div key={dia.fecha} className="flex items-center gap-3">
+                            <div key={dia.fecha} className="flex items-center gap-3 relative">
                               <div className="w-24 text-xs text-gray-600 text-right">{fechaStr}</div>
                               <div className="flex-1 flex gap-1 h-6">
-                                <div className="bg-green-500 rounded-l" style={{ width: `${(dia.enviados / maxTotal) * 100}%`, minWidth: dia.enviados > 0 ? '4px' : '0' }} title={`OK: ${dia.enviados}`}></div>
-                                <div className="bg-red-500 rounded-r" style={{ width: `${(dia.errores / maxTotal) * 100}%`, minWidth: dia.errores > 0 ? '4px' : '0' }} title={`Error: ${dia.errores}`}></div>
+                                <div
+                                  className="bg-green-500 rounded-l cursor-pointer hover:bg-green-600 transition-colors"
+                                  style={{ width: `${(dia.enviados / maxTotal) * 100}%`, minWidth: dia.enviados > 0 ? '4px' : '0' }}
+                                  onMouseEnter={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    setTooltipData({
+                                      socios: dia.socios.ok,
+                                      tipo: 'ok',
+                                      fecha: fechaStr,
+                                      count: dia.enviados
+                                    });
+                                    setTooltipPosition({ x: rect.left + rect.width / 2, y: rect.top - 10 });
+                                  }}
+                                  onMouseLeave={() => {
+                                    setTooltipData(null);
+                                    setTooltipPosition(null);
+                                  }}
+                                ></div>
+                                <div
+                                  className="bg-red-500 rounded-r cursor-pointer hover:bg-red-600 transition-colors"
+                                  style={{ width: `${(dia.errores / maxTotal) * 100}%`, minWidth: dia.errores > 0 ? '4px' : '0' }}
+                                  onMouseEnter={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    setTooltipData({
+                                      socios: dia.socios.error,
+                                      tipo: 'error',
+                                      fecha: fechaStr,
+                                      count: dia.errores
+                                    });
+                                    setTooltipPosition({ x: rect.left + rect.width / 2, y: rect.top - 10 });
+                                  }}
+                                  onMouseLeave={() => {
+                                    setTooltipData(null);
+                                    setTooltipPosition(null);
+                                  }}
+                                ></div>
                               </div>
                               <div className="w-16 text-xs text-gray-600 text-right">{dia.total}</div>
                             </div>
@@ -386,17 +475,77 @@ export default function ObservabilidadPage() {
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="border-b border-gray-200">
-                                <th className="text-left py-3 px-2 font-medium text-gray-600">Fecha/Hora</th>
-                                <th className="text-left py-3 px-2 font-medium text-gray-600">Tipo</th>
-                                <th className="text-left py-3 px-2 font-medium text-gray-600">Resultado</th>
-                                <th className="text-left py-3 px-2 font-medium text-gray-600">Liquidación</th>
-                                <th className="text-left py-3 px-2 font-medium text-gray-600">Socio</th>
-                                <th className="text-left py-3 px-2 font-medium text-gray-600">Teléfono</th>
+                                <th
+                                  onClick={() => handleSort('fecha_evento')}
+                                  className="text-left py-3 px-2 font-medium text-gray-600 cursor-pointer hover:bg-gray-50 select-none"
+                                >
+                                  <div className="flex items-center gap-1">
+                                    Fecha/Hora
+                                    {sortField === 'fecha_evento' && (
+                                      sortOrder === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                                    )}
+                                  </div>
+                                </th>
+                                <th
+                                  onClick={() => handleSort('estado')}
+                                  className="text-left py-3 px-2 font-medium text-gray-600 cursor-pointer hover:bg-gray-50 select-none"
+                                >
+                                  <div className="flex items-center gap-1">
+                                    Tipo
+                                    {sortField === 'estado' && (
+                                      sortOrder === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                                    )}
+                                  </div>
+                                </th>
+                                <th
+                                  onClick={() => handleSort('resultado_envio')}
+                                  className="text-left py-3 px-2 font-medium text-gray-600 cursor-pointer hover:bg-gray-50 select-none"
+                                >
+                                  <div className="flex items-center gap-1">
+                                    Resultado
+                                    {sortField === 'resultado_envio' && (
+                                      sortOrder === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                                    )}
+                                  </div>
+                                </th>
+                                <th
+                                  onClick={() => handleSort('liquidacion_id')}
+                                  className="text-left py-3 px-2 font-medium text-gray-600 cursor-pointer hover:bg-gray-50 select-none"
+                                >
+                                  <div className="flex items-center gap-1">
+                                    Liquidación
+                                    {sortField === 'liquidacion_id' && (
+                                      sortOrder === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                                    )}
+                                  </div>
+                                </th>
+                                <th
+                                  onClick={() => handleSort('nombre_socio')}
+                                  className="text-left py-3 px-2 font-medium text-gray-600 cursor-pointer hover:bg-gray-50 select-none"
+                                >
+                                  <div className="flex items-center gap-1">
+                                    Socio
+                                    {sortField === 'nombre_socio' && (
+                                      sortOrder === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                                    )}
+                                  </div>
+                                </th>
+                                <th
+                                  onClick={() => handleSort('telefono_socio')}
+                                  className="text-left py-3 px-2 font-medium text-gray-600 cursor-pointer hover:bg-gray-50 select-none"
+                                >
+                                  <div className="flex items-center gap-1">
+                                    Teléfono
+                                    {sortField === 'telefono_socio' && (
+                                      sortOrder === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                                    )}
+                                  </div>
+                                </th>
                                 <th className="text-left py-3 px-2 font-medium text-gray-600">Mensaje/Error</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {mensajes.map((msg) => (
+                              {mensajesOrdenados.map((msg) => (
                                 <tr key={msg.id} className="border-b border-gray-100 hover:bg-gray-50">
                                   <td className="py-3 px-2 text-gray-500 text-xs">
                                     {new Date(msg.fecha_evento).toLocaleString('es-AR', {
@@ -473,6 +622,40 @@ export default function ObservabilidadPage() {
             </div>
           )}
         </div>
+
+        {/* Tooltip para socios del gráfico */}
+        {tooltipData && tooltipPosition && (
+          <div
+            className="fixed z-50 pointer-events-none"
+            style={{
+              left: tooltipPosition.x,
+              top: tooltipPosition.y,
+              transform: 'translate(-50%, -100%)'
+            }}
+          >
+            <div className={`rounded-lg shadow-xl border-2 p-4 max-w-md max-h-96 overflow-y-auto ${
+              tooltipData.tipo === 'ok'
+                ? 'bg-green-50 border-green-300'
+                : 'bg-red-50 border-red-300'
+            }`}>
+              <div className="mb-2 pb-2 border-b border-gray-300">
+                <div className="font-bold text-sm">
+                  {tooltipData.fecha}
+                </div>
+                <div className={`text-xs ${tooltipData.tipo === 'ok' ? 'text-green-700' : 'text-red-700'}`}>
+                  {tooltipData.tipo === 'ok' ? '✅ Enviados OK' : '❌ Errores'}: {tooltipData.count} socios
+                </div>
+              </div>
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                {tooltipData.socios.map((socio, idx) => (
+                  <div key={idx} className="text-xs text-gray-700 py-1 border-b border-gray-200 last:border-0">
+                    <span className="font-mono font-semibold">{socio.socio_id}</span> - {socio.nombre}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </>
   );

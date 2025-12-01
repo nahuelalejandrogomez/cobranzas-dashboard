@@ -15,7 +15,8 @@ export async function GET(request: Request) {
     const desde = searchParams.get('desde') || getArgentinaDate(-7);
     const hasta = searchParams.get('hasta') || getArgentinaDate();
 
-    const query = `
+    // Query para obtener los totales por día
+    const queryTotales = `
       SELECT
         DATE(fecha_evento) as fecha,
         SUM(CASE WHEN resultado_envio = 'OK' THEN 1 ELSE 0 END) as enviados,
@@ -27,13 +28,52 @@ export async function GET(request: Request) {
       ORDER BY fecha ASC
     `;
 
-    const rows = (await executeQuery(query, [desde, hasta])) as any[];
+    // Query para obtener la lista de socios por día y resultado
+    const querySocios = `
+      SELECT
+        DATE(E.fecha_evento) as fecha,
+        E.resultado_envio,
+        L.SOCLIQUIDA as socio_id,
+        S.NOMSOCIO as nombre_socio
+      FROM EstadoEnvioLiquidaciones E
+      LEFT JOIN Liquidaciones L ON E.liquidacion_id = L.id
+      LEFT JOIN Socios S ON L.SOCLIQUIDA = S.NUMSOCIO
+      WHERE DATE(E.fecha_evento) BETWEEN ? AND ?
+      ORDER BY DATE(E.fecha_evento) ASC, E.resultado_envio ASC
+    `;
 
-    const datos = rows.map(row => ({
+    const [rowsTotales, rowsSocios] = await Promise.all([
+      executeQuery(queryTotales, [desde, hasta]) as Promise<any[]>,
+      executeQuery(querySocios, [desde, hasta]) as Promise<any[]>
+    ]);
+
+    // Agrupar socios por fecha y resultado
+    const sociosPorDia: { [key: string]: { ok: Array<{socio_id: string, nombre: string}>, error: Array<{socio_id: string, nombre: string}> } } = {};
+
+    rowsSocios.forEach((row: any) => {
+      const fechaKey = row.fecha;
+      if (!sociosPorDia[fechaKey]) {
+        sociosPorDia[fechaKey] = { ok: [], error: [] };
+      }
+
+      const socio = {
+        socio_id: row.socio_id || 'N/A',
+        nombre: row.nombre_socio || 'Sin nombre'
+      };
+
+      if (row.resultado_envio === 'OK') {
+        sociosPorDia[fechaKey].ok.push(socio);
+      } else if (row.resultado_envio === 'ERROR') {
+        sociosPorDia[fechaKey].error.push(socio);
+      }
+    });
+
+    const datos = rowsTotales.map(row => ({
       fecha: row.fecha,
       enviados: Number(row.enviados) || 0,
       errores: Number(row.errores) || 0,
-      total: Number(row.total) || 0
+      total: Number(row.total) || 0,
+      socios: sociosPorDia[row.fecha] || { ok: [], error: [] }
     }));
 
     return Response.json(datos);
