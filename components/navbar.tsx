@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
+import { LayoutDashboard, Search, Users, Send, BarChart3 } from 'lucide-react';
 
 interface NavbarProps {
   username?: string;
@@ -43,27 +44,38 @@ export function Navbar({ username }: NavbarProps) {
           <div className="flex items-center gap-6">
             <Link
               href="/"
-              className="text-sm font-medium text-gray-700 hover:text-[#009444] transition-colors"
+              className="text-sm font-medium text-gray-700 hover:text-[#009444] transition-colors flex items-center gap-2"
             >
+              <LayoutDashboard className="h-4 w-4" />
               Dashboard
             </Link>
             <Link
               href="/socios"
-              className="text-sm font-medium text-gray-700 hover:text-[#009444] transition-colors"
+              className="text-sm font-medium text-gray-700 hover:text-[#009444] transition-colors flex items-center gap-2"
             >
-              Buscar Socios
+              <Search className="h-4 w-4" />
+              Buscar Socio
+            </Link>
+            <Link
+              href="/detalle-socios"
+              className="text-sm font-medium text-gray-700 hover:text-[#009444] transition-colors flex items-center gap-2"
+            >
+              <Users className="h-4 w-4" />
+              Detalle de Socios
             </Link>
             <Link
               href="/envio-mensajes"
-              className="text-sm font-medium text-gray-700 hover:text-[#009444] transition-colors"
+              className="text-sm font-medium text-gray-700 hover:text-[#009444] transition-colors flex items-center gap-2"
             >
+              <Send className="h-4 w-4" />
               Envío de Mensajes
             </Link>
             <Link
               href="/observabilidad"
-              className="text-sm font-medium text-gray-700 hover:text-[#009444] transition-colors"
+              className="text-sm font-medium text-gray-700 hover:text-[#009444] transition-colors flex items-center gap-2"
             >
-              Observabilidad
+              <BarChart3 className="h-4 w-4" />
+              Observabilidad (V1.mensajes)
             </Link>
           </div>
         </div>

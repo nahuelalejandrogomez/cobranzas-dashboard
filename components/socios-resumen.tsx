@@ -19,7 +19,7 @@ interface DeudoresStats {
   bonificadoTotal: number;         // $ bonificado total histórico (BO)
 }
 
-function DeudoresResumen() {
+function SociosResumen() {
   const [stats, setStats] = useState<DeudoresStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [showDetalle, setShowDetalle] = useState(false);
@@ -59,7 +59,7 @@ function DeudoresResumen() {
       <Card className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200">
         <CardHeader>
           <CardTitle className="text-xl font-bold text-red-800">
-            🔄 Cargando detalle de deudores...
+            🔄 Cargando lista de socios...
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -93,10 +93,10 @@ function DeudoresResumen() {
     <div className="space-y-4">
       <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Detalle de Deudores
+          Lista de Socios
         </h2>
         <p className="text-gray-600">
-          Resumen de la situación de cobranzas y deudores
+          Análisis y seguimiento de los socios
         </p>
       </div>
       
@@ -161,10 +161,10 @@ function DeudoresResumen() {
             >
               <CardContent className="p-6">
                 <h3 className="text-xl font-bold text-blue-800 mb-2">
-                  📋 Ver Lista Detallada de Deudores
+                  📋 Ver Lista Detallada de Socios
                 </h3>
                 <p className="text-gray-600">
-                  Accede al detalle completo de deudores con información de cobradores
+                  Accede al detalle completo de socios con información de cobradores
                 </p>
               </CardContent>
             </Card>
@@ -175,4 +175,4 @@ function DeudoresResumen() {
   );
 }
 
-export default DeudoresResumen;
+export default SociosResumen;
