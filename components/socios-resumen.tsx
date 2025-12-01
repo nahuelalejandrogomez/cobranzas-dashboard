@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/format-utils';
-import DeudoresDetalle from './deudores-detalle';
 
 interface DeudoresStats {
   // Mes Actual
@@ -20,9 +20,9 @@ interface DeudoresStats {
 }
 
 function SociosResumen() {
+  const router = useRouter();
   const [stats, setStats] = useState<DeudoresStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showDetalle, setShowDetalle] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -78,14 +78,6 @@ function SociosResumen() {
           <p className="text-red-600">Error: {error}</p>
         </CardContent>
       </Card>
-    );
-  }
-
-  if (showDetalle) {
-    return (
-      <DeudoresDetalle
-        onBack={() => setShowDetalle(false)}
-      />
     );
   }
 
@@ -155,9 +147,9 @@ function SociosResumen() {
           </div>
 
           <div className="text-center mt-6">
-            <Card 
+            <Card
               className="border-2 border-blue-300 bg-gradient-to-r from-blue-50 to-indigo-50 cursor-pointer hover:shadow-lg transition-all duration-200"
-              onClick={() => setShowDetalle(true)}
+              onClick={() => router.push('/detalle-socios')}
             >
               <CardContent className="p-6">
                 <h3 className="text-xl font-bold text-blue-800 mb-2">

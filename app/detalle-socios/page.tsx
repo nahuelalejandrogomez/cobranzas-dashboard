@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { redirect } from 'next/navigation';
 import { Navbar } from '@/components/navbar';
-import SociosResumen from '@/components/socios-resumen';
+import DeudoresDetalle from '@/components/deudores-detalle';
 
 export default function DetalleSocios() {
   const [session, setSession] = useState<{ username: string } | null>(null);
@@ -54,8 +54,8 @@ export default function DetalleSocios() {
             </p>
           </div>
 
-          {/* Componente de Socios */}
-          <SociosResumen />
+          {/* Detalle de Socios */}
+          <DeudoresDetalle />
         </div>
       </main>
     </>

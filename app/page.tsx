@@ -6,6 +6,7 @@ import { KPICard } from '@/components/kpi-card';
 import { KPIData } from '@/lib/types';
 import { Navbar } from '@/components/navbar';
 import { DeudasChart } from '@/components/deudas-chart';
+import SociosResumen from '@/components/socios-resumen';
 import { formatCurrency } from '@/lib/format-utils';
 
 export default function Dashboard() {
@@ -76,6 +77,9 @@ export default function Dashboard() {
               Análisis y seguimiento de liquidaciones - Presencia Médica
             </p>
           </div>
+
+          {/* LISTA DE SOCIOS */}
+          <SociosResumen />
 
           {/* DISTRIBUCIÓN MENSUAL */}
           <DeudasChart />
