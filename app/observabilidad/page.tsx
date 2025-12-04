@@ -12,8 +12,9 @@ const REFRESH_INTERVAL = 45 * 60 * 1000;
 // Obtener fecha de hoy en Argentina (UTC-3)
 function getArgentinaDate(daysOffset: number = 0): string {
   const now = new Date();
-  const argentinaOffset = -3 * 60;
-  const argentinaTime = new Date(now.getTime() + (argentinaOffset - now.getTimezoneOffset()) * 60000);
+  // Forzar interpretación como UTC y ajustar a Argentina (UTC-3)
+  const utcTime = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes());
+  const argentinaTime = new Date(utcTime - 3 * 60 * 60 * 1000); // UTC-3
   argentinaTime.setDate(argentinaTime.getDate() + daysOffset);
   return argentinaTime.toISOString().slice(0, 10);
 }
