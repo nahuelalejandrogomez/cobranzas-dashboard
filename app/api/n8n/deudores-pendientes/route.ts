@@ -22,6 +22,7 @@ import { executeQuery } from '@/lib/db';
  * - ?limit=N (cantidad de socios a devolver, default 30)
  * - ?monto_minimo=1000 (default 1000)
  * - ?test_phone=false (usar teléfono real de BD)
+ * - ?mes_override=202511 (usar mes específico para testing, formato YYYYMM)
  */
 
 const TELEFONO_PRUEBA = '812001079';
@@ -73,14 +74,15 @@ export async function GET(request: Request) {
     const limit = Math.min(Number(searchParams.get('limit')) || 30, 100);
     const usarTelefonoReal = searchParams.get('test_phone') === 'false';
     const telefonoOverride = searchParams.get('telefono_override') || null;
+    const mesOverride = searchParams.get('mes_override') ? Number(searchParams.get('mes_override')) : null;
 
     console.log('[API n8n/envio-masivo-inicial] Iniciando consulta...');
     console.log(`  - Monto mínimo: $${montoMinimo}`);
     console.log(`  - Límite: ${limit}`);
     console.log(`  - Teléfono: ${telefonoOverride ? 'OVERRIDE: ' + telefonoOverride : (usarTelefonoReal ? 'REAL' : 'PRUEBA')}`);
 
-    const mesActual = getCurrentMonthArgentina();
-    console.log(`  - Mes actual (Argentina): ${mesActual}`);
+    const mesActual = mesOverride || getCurrentMonthArgentina();
+    console.log(`  - Mes a consultar: ${mesActual}${mesOverride ? ' (OVERRIDE para testing)' : ' (mes actual Argentina)'}`);
 
     // PASO 1: Identificar liquidaciones del mes actual sin informar
     const queryCuponesNuevos = `
