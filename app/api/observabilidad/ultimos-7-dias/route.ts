@@ -15,31 +15,32 @@ export async function GET(request: Request) {
     const desde = searchParams.get('desde') || getArgentinaDate(-7);
     const hasta = searchParams.get('hasta') || getArgentinaDate();
 
+    // 🔥 FIX: Convertir fecha_evento de UTC a Argentina (UTC-3) para filtrar correctamente
     // Query para obtener los totales por día
     const queryTotales = `
       SELECT
-        DATE(fecha_evento) as fecha,
+        DATE(CONVERT_TZ(fecha_evento, '+00:00', '-03:00')) as fecha,
         SUM(CASE WHEN resultado_envio = 'OK' THEN 1 ELSE 0 END) as enviados,
         SUM(CASE WHEN resultado_envio = 'ERROR' THEN 1 ELSE 0 END) as errores,
         COUNT(*) as total
       FROM EstadoEnvioLiquidaciones
-      WHERE DATE(fecha_evento) BETWEEN ? AND ?
-      GROUP BY DATE(fecha_evento)
+      WHERE DATE(CONVERT_TZ(fecha_evento, '+00:00', '-03:00')) BETWEEN ? AND ?
+      GROUP BY DATE(CONVERT_TZ(fecha_evento, '+00:00', '-03:00'))
       ORDER BY fecha ASC
     `;
 
     // Query para obtener la lista de socios por día y resultado
     const querySocios = `
       SELECT
-        DATE(E.fecha_evento) as fecha,
+        DATE(CONVERT_TZ(E.fecha_evento, '+00:00', '-03:00')) as fecha,
         E.resultado_envio,
         L.SOCLIQUIDA as socio_id,
         S.NOMSOCIO as nombre_socio
       FROM EstadoEnvioLiquidaciones E
       LEFT JOIN Liquidaciones L ON E.liquidacion_id = L.id
       LEFT JOIN Socios S ON L.SOCLIQUIDA = S.NUMSOCIO
-      WHERE DATE(E.fecha_evento) BETWEEN ? AND ?
-      ORDER BY DATE(E.fecha_evento) ASC, E.resultado_envio ASC
+      WHERE DATE(CONVERT_TZ(E.fecha_evento, '+00:00', '-03:00')) BETWEEN ? AND ?
+      ORDER BY DATE(CONVERT_TZ(E.fecha_evento, '+00:00', '-03:00')) ASC, E.resultado_envio ASC
     `;
 
     const [rowsTotales, rowsSocios] = await Promise.all([

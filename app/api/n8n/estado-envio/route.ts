@@ -113,7 +113,9 @@ export async function POST(request: Request) {
     }
 
     // Insertar el registro en EstadoEnvioLiquidaciones
-    const fechaArgentina = getArgentinaDateTime();
+    // 🔥 FIX: Guardar en UTC para que MySQL interprete correctamente las fechas
+    // La conversión a Argentina se hace en los queries de lectura
+    const fechaUTC = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
     const insertQuery = `
       INSERT INTO EstadoEnvioLiquidaciones
@@ -128,7 +130,7 @@ export async function POST(request: Request) {
       body.estado,
       body.resultado_envio,
       metadataJson,
-      fechaArgentina
+      fechaUTC
     ])) as any;
 
     console.log(`[API n8n/estado-envio] Registro creado:`, {

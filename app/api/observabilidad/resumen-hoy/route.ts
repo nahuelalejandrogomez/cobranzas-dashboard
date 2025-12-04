@@ -13,13 +13,14 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const fecha = searchParams.get('fecha') || getArgentinaDate();
 
+    // 🔥 FIX: Convertir fecha_evento de UTC a Argentina (UTC-3) para filtrar correctamente
     const query = `
       SELECT
         COUNT(*) as total,
         SUM(CASE WHEN resultado_envio = 'OK' THEN 1 ELSE 0 END) as enviados,
         SUM(CASE WHEN resultado_envio = 'ERROR' THEN 1 ELSE 0 END) as errores
       FROM EstadoEnvioLiquidaciones
-      WHERE DATE(fecha_evento) = ?
+      WHERE DATE(CONVERT_TZ(fecha_evento, '+00:00', '-03:00')) = ?
     `;
 
     const [result] = (await executeQuery(query, [fecha])) as any[];
