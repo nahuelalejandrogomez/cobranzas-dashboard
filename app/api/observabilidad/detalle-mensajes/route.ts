@@ -24,9 +24,9 @@ export async function GET(request: Request) {
     const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit')) || 50));
     const offset = (page - 1) * limit;
 
-    // 🔥 FIX: Convertir fecha_evento de UTC a Argentina (UTC-3) para filtrar correctamente
+    // Las fechas están guardadas directamente en hora Argentina, no necesitan conversión
     // Construir WHERE clause dinámico
-    const whereClauses = ['DATE(CONVERT_TZ(E.fecha_evento, \'+00:00\', \'-03:00\')) BETWEEN ? AND ?'];
+    const whereClauses = ['DATE(E.fecha_evento) BETWEEN ? AND ?'];
     const params: any[] = [desde, hasta];
 
     if (estado && estado !== 'TODOS') {
