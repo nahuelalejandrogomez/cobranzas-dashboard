@@ -18,6 +18,21 @@ function getArgentinaDate(daysOffset: number = 0): string {
   return argentinaTime.toISOString().slice(0, 10);
 }
 
+// Convertir fecha UTC a hora de Argentina y formatear
+function formatArgentinaDateTime(dateString: string): string {
+  const date = new Date(dateString);
+  // Convertir a hora de Argentina (UTC-3)
+  const argentinaOffset = -3 * 60; // -3 horas en minutos
+  const argentinaTime = new Date(date.getTime() + (argentinaOffset - date.getTimezoneOffset()) * 60000);
+
+  return argentinaTime.toLocaleString('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
 // ===== INTERFACES =====
 interface ResumenHoy {
   fecha: string;
@@ -239,7 +254,7 @@ export default function ObservabilidadPage() {
             </div>
             {lastUpdate && (
               <div className="text-xs text-gray-500 text-right">
-                Última actualización: {lastUpdate.toLocaleTimeString('es-AR')}
+                Última actualización: {formatArgentinaDateTime(lastUpdate.toISOString())}
                 <br />
                 <span className="text-gray-400">Auto-refresh: 45 min</span>
               </div>
@@ -548,12 +563,7 @@ export default function ObservabilidadPage() {
                               {mensajesOrdenados.map((msg) => (
                                 <tr key={msg.id} className="border-b border-gray-100 hover:bg-gray-50">
                                   <td className="py-3 px-2 text-gray-500 text-xs">
-                                    {new Date(msg.fecha_evento).toLocaleString('es-AR', {
-                                      day: '2-digit',
-                                      month: '2-digit',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })}
+                                    {formatArgentinaDateTime(msg.fecha_evento)}
                                   </td>
                                   <td className="py-3 px-2">
                                     <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
