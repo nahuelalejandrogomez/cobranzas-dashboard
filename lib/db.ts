@@ -36,6 +36,9 @@ export async function getPool() {
       // Importante para Railway/serverless
       enableKeepAlive: true,
       keepAliveInitialDelay: 10000,
+      // 🔥 FIX: Habilitar autocommit para persistir cambios
+      multipleStatements: false,
+      namedPlaceholders: false,
     });
 
     // Test connection
@@ -56,9 +59,27 @@ export async function executeQuery(query: string, values?: any[]) {
   try {
     const dbPool = await getPool();
     connection = await dbPool.getConnection();
+
+    // Ejecutar query
     const [results] = await connection.execute(query, values);
+
+    // 🔥 FIX: Hacer commit explícito para operaciones de escritura (INSERT, UPDATE, DELETE)
+    const isWriteOperation = /^\s*(INSERT|UPDATE|DELETE)/i.test(query.trim());
+    if (isWriteOperation) {
+      await connection.commit();
+    }
+
     return results;
   } catch (error) {
+    // Rollback en caso de error
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        console.error('[DB] Rollback error:', rollbackError);
+      }
+    }
+
     console.error('[DB] Query error:', error);
     // Reset pool on connection errors
     if (error instanceof Error &&
