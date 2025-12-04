@@ -21,15 +21,25 @@ function getArgentinaDate(daysOffset: number = 0): string {
 
 // Formatear fecha que ya viene en hora de Argentina desde la BD
 function formatArgentinaDateTime(dateString: string): string {
-  const date = new Date(dateString);
-  // La fecha ya viene en hora Argentina desde la BD, solo formatear
-  return date.toLocaleString('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  });
+  if (!dateString) return '-';
+
+  // La fecha viene como string "YYYY-MM-DD HH:mm:ss" (hora Argentina, sin timezone)
+  // Parsear manualmente para evitar que JavaScript la interprete como UTC
+  try {
+    const match = dateString.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
+    if (!match) {
+      console.warn('Formato de fecha inesperado:', dateString);
+      return dateString;
+    }
+
+    const [, year, month, day, hour, minute] = match;
+
+    // Formato: "DD/MM HH:mm"
+    return `${day}/${month} ${hour}:${minute}`;
+  } catch (error) {
+    console.error('Error formateando fecha:', error);
+    return dateString;
+  }
 }
 
 // ===== INTERFACES =====

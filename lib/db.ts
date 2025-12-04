@@ -36,9 +36,10 @@ export async function getPool() {
       // Importante para Railway/serverless
       enableKeepAlive: true,
       keepAliveInitialDelay: 10000,
-      // 🔥 FIX: Habilitar autocommit para persistir cambios
-      multipleStatements: false,
-      namedPlaceholders: false,
+      // 🔥 CRÍTICO: dateStrings evita conversión automática de DATETIME a Date
+      // Las fechas se devuelven como strings "YYYY-MM-DD HH:mm:ss" sin timezone
+      dateStrings: true,
+      timezone: 'Z',
     });
 
     // Test connection
@@ -60,7 +61,7 @@ export async function executeQuery(query: string, values?: any[]) {
     const dbPool = await getPool();
     connection = await dbPool.getConnection();
 
-    // Ejecutar query
+    // Ejecutar query (dateStrings ya está configurado en el pool)
     const [results] = await connection.execute(query, values);
 
     // 🔥 FIX: Hacer commit explícito para operaciones de escritura (INSERT, UPDATE, DELETE)
