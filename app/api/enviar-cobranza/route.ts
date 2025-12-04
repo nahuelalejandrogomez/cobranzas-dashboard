@@ -37,6 +37,19 @@ export async function POST(request: Request) {
       );
     }
 
+    // Verificar que la respuesta tenga contenido
+    const contentLength = response.headers.get('content-length');
+    if (contentLength === '0') {
+      console.error('[API enviar-cobranza] Respuesta vacía de n8n');
+      return Response.json(
+        {
+          status: 'error',
+          mensaje: 'El webhook de n8n devolvió una respuesta vacía. Verificá que el workflow esté activo.',
+        },
+        { status: 500 }
+      );
+    }
+
     const data = await response.json();
     console.log('[API enviar-cobranza] Respuesta de n8n:', data);
 
