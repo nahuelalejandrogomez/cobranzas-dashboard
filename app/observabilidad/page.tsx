@@ -18,18 +18,16 @@ function getArgentinaDate(daysOffset: number = 0): string {
   return argentinaTime.toISOString().slice(0, 10);
 }
 
-// Convertir fecha UTC a hora de Argentina y formatear
+// Formatear fecha que ya viene en hora de Argentina desde la BD
 function formatArgentinaDateTime(dateString: string): string {
   const date = new Date(dateString);
-  // Convertir a hora de Argentina (UTC-3)
-  const argentinaOffset = -3 * 60; // -3 horas en minutos
-  const argentinaTime = new Date(date.getTime() + (argentinaOffset - date.getTimezoneOffset()) * 60000);
-
-  return argentinaTime.toLocaleString('es-AR', {
+  // La fecha ya viene en hora Argentina desde la BD, solo formatear
+  return date.toLocaleString('es-AR', {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    hour12: false
   });
 }
 
