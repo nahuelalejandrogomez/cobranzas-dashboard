@@ -61,6 +61,10 @@ interface DeudorPendiente {
   socio_id: string;
   nombre: string;
   telefono: string;
+  liquidacion_id_mes_actual: number;
+  mes_encontrado: number;
+  monto_cuota_mes_actual: number;
+  per_actual: number;
   liquidaciones_pendientes: LiquidacionPendiente[];
   total_adeudado: number;
   cantidad_cuotas: number;
@@ -88,7 +92,9 @@ export async function GET(request: Request) {
     const queryCuponesNuevos = `
       SELECT
         L.id as liquidacion_id,
-        L.SOCLIQUIDA as numsocio
+        L.SOCLIQUIDA as numsocio,
+        (L.IMPLIQUIDA - COALESCE(L.ABOLIQUIDA, 0)) as monto_mes_actual,
+        (YEAR(L.PERLIQUIDANRO) * 100 + MONTH(L.PERLIQUIDANRO)) as periodo_mes_actual
       FROM Liquidaciones L
       WHERE L.COBLIQUIDA = 30
         AND L.BAJA = 0
@@ -145,9 +151,24 @@ export async function GET(request: Request) {
       return Response.json([]);
     }
 
-    // Obtener lista única de socios con cupones sin informar
+    // Obtener lista única de socios con cupones sin informar y crear mapa de info del mes actual
     const sociosConCuponesNuevos = [...new Set(cuponesSinInformar.map(c => c.numsocio))];
     console.log(`  - Socios con cupones sin informar: ${sociosConCuponesNuevos.length}`);
+
+    // Crear mapa con info de la liquidación del mes actual por socio
+    const infoMesActualPorSocio = new Map<string, {
+      liquidacion_id: number;
+      monto: number;
+      periodo: number;
+    }>();
+
+    for (const cupon of cuponesSinInformar) {
+      infoMesActualPorSocio.set(cupon.numsocio, {
+        liquidacion_id: cupon.liquidacion_id,
+        monto: Number(cupon.monto_mes_actual) || 0,
+        periodo: Number(cupon.periodo_mes_actual) || 0
+      });
+    }
 
     // PASO 2: Para esos socios, traer TODAS sus liquidaciones con deuda
     const placeholdersSocios = sociosConCuponesNuevos.map(() => '?').join(',');
@@ -265,11 +286,16 @@ export async function GET(request: Request) {
     const resultado: DeudorPendiente[] = deudoresArray.map(d => {
       const telefono = telefonoFinal || d.telefono_real;
       const conversacion = conversacionesMapa.get(telefono) || [];
+      const infoMesActual = infoMesActualPorSocio.get(d.socio_id);
 
       return {
         socio_id: d.socio_id,
         nombre: d.nombre,
         telefono: telefono,
+        liquidacion_id_mes_actual: infoMesActual?.liquidacion_id || 0,
+        mes_encontrado: infoMesActual?.periodo || 0,
+        monto_cuota_mes_actual: Math.round((infoMesActual?.monto || 0) * 100) / 100,
+        per_actual: infoMesActual?.periodo || 0,
         liquidaciones_pendientes: d.liquidaciones,
         total_adeudado: Math.round(d.total_adeudado * 100) / 100,
         cantidad_cuotas: d.liquidaciones.length,
