@@ -78,7 +78,9 @@ export async function GET(request: Request) {
       WHERE L.COBLIQUIDA = 30
         AND L.BAJA <> 1
         AND L.ESTLIQUIDA = 'CA'
-        AND L.PAGLIQUIDA BETWEEN CURDATE() - INTERVAL ? DAY AND CURDATE()
+        AND L.PAGLIQUIDA IS NOT NULL
+        AND L.PAGLIQUIDA != '--/--/--'
+        AND STR_TO_DATE(L.PAGLIQUIDA, '%d/%m/%Y') BETWEEN CURDATE() - INTERVAL ? DAY AND CURDATE()
         ${telefonoOverride ? 'AND L.SOCLIQUIDA IN (SELECT NUMSOCIO FROM Socios WHERE TELSOCIO = ?)' : ''}
     `;
 
@@ -144,17 +146,19 @@ export async function GET(request: Request) {
         L.NUMLIQUIDA,
         L.IMPLIQUIDA,
         L.ABOLIQUIDA,
-        DATE_FORMAT(L.PAGLIQUIDA, '%Y-%m-%d') as PAGLIQUIDA,
+        L.PAGLIQUIDA,
         L.PERLIQUIDA,
-        DATE_FORMAT(L.PERLIQUIDANRO, '%Y-%m-%d') as PERLIQUIDANRO
+        L.PERLIQUIDANRO
       FROM Liquidaciones L
       INNER JOIN Socios S ON L.SOCLIQUIDA = S.NUMSOCIO
       WHERE L.SOCLIQUIDA IN (${placeholdersSocios})
         AND L.COBLIQUIDA = 30
         AND L.BAJA <> 1
         AND L.ESTLIQUIDA = 'CA'
-        AND L.PAGLIQUIDA BETWEEN CURDATE() - INTERVAL ? DAY AND CURDATE()
-      ORDER BY L.PAGLIQUIDA DESC
+        AND L.PAGLIQUIDA IS NOT NULL
+        AND L.PAGLIQUIDA != '--/--/--'
+        AND STR_TO_DATE(L.PAGLIQUIDA, '%d/%m/%Y') BETWEEN CURDATE() - INTERVAL ? DAY AND CURDATE()
+      ORDER BY STR_TO_DATE(L.PAGLIQUIDA, '%d/%m/%Y') DESC
     `;
 
     const paramsDetalles = [...sociosConLiquidacionesPendientes, diasAtras];
