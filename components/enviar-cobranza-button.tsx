@@ -9,11 +9,8 @@ export function EnviarCobranzaButton() {
   const [resultado, setResultado] = useState<{
     status: string;
     mensaje: string;
-    resultados?: {
-      ok: number;
-      error: number;
-      total: number;
-    };
+    enviados?: number;
+    errores?: number;
   } | null>(null);
 
   const handleEnviar = async () => {
@@ -114,11 +111,11 @@ export function EnviarCobranzaButton() {
               }`}>
                 {resultado.mensaje}
               </p>
-              {resultado.resultados && (
+              {resultado.enviados !== undefined && (
                 <div className="mt-2 text-sm text-gray-700">
-                  <p>✓ Mensajes enviados: <span className="font-semibold">{resultado.resultados.ok}</span></p>
-                  {resultado.resultados.error > 0 && (
-                    <p className="text-red-600">✗ Errores: <span className="font-semibold">{resultado.resultados.error}</span></p>
+                  <p>✓ Mensajes enviados: <span className="font-semibold">{resultado.enviados}</span></p>
+                  {resultado.errores !== undefined && resultado.errores > 0 && (
+                    <p className="text-red-600">✗ Errores: <span className="font-semibold">{resultado.errores}</span></p>
                   )}
                 </div>
               )}
