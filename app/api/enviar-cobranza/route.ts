@@ -50,10 +50,29 @@ export async function POST(request: Request) {
       );
     }
 
-    const data = await response.json();
-    console.log('[API enviar-cobranza] Respuesta de n8n:', data);
+    let data = await response.json();
+    console.log('[API enviar-cobranza] Respuesta de n8n (raw):', data);
 
-    return Response.json(data);
+    // n8n devuelve un array anidado [[{enviados, errores}]]
+    // Necesitamos desanidar y agregar campos faltantes
+    if (Array.isArray(data) && data.length > 0) {
+      // Desanidar: [[objeto]] -> [objeto] -> objeto
+      while (Array.isArray(data) && data.length > 0) {
+        data = data[0];
+      }
+    }
+
+    // Normalizar respuesta al formato esperado
+    const normalizedData = {
+      status: 'ok',
+      mensaje: 'Proceso de envío de cupones ejecutado correctamente',
+      enviados: data?.enviados || 0,
+      errores: data?.errores || 0
+    };
+
+    console.log('[API enviar-cobranza] Respuesta normalizada:', normalizedData);
+
+    return Response.json(normalizedData);
 
   } catch (error) {
     console.error('[API enviar-cobranza] Error:', error);
