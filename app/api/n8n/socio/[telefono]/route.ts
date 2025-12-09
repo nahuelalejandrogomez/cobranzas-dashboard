@@ -51,7 +51,8 @@ function mapearEstado(estliquida: string): string {
 }
 
 // Normalizar teléfono (quitar +, espacios, guiones)
-function normalizarTelefono(telefono: string): string {
+function normalizarTelefono(telefono: string | undefined): string {
+  if (!telefono) return '';
   return telefono.replace(/[\s\-\+]/g, '');
 }
 
